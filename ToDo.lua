@@ -4,7 +4,7 @@
 ---------------------
 
 
-			 To Do 1.4.3
+			 To Do 1.4.4
 			---------------------
 	
 		  √* Select the ItemCount tab/page in the ElvUI config window when datatext is clicked
@@ -23,7 +23,7 @@
 		   
 		  √* Display item and count in combat text
 
-		   * Translations for all localizations
+		   * Translations for all localizations (low priority)
 
 		   * Major Revision: 
 		     Different sounds for each counted item (which also means we have to 
