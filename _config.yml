@@ -1,1 +1,2 @@
 theme: jekyll-theme-slate
+ignore: _config.yml
