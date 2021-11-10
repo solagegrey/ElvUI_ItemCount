@@ -1,0 +1,17 @@
+## Interface: 90105
+## Title: |cff1784d1ElvUI|r ItemCount
+## Notes: Shows Quantity on Hand for a specified item; chimes when counted item is collected; signals when goal quantity is reached
+## Version: 1.4.3
+## SavedVariables: ItemCountDB
+## Author: Solage of Greymane
+## RequiredDeps: ElvUI
+## LoadWith: ElvUI
+## X-Category: Plugins
+## X-Website: http://wow.curseforge.com/addons/elvui-itemcount/
+## X-Localizations: enUS, enGB, deDE, frFR, esES, esMX, zhCN, zhTW, koKR, ruRU
+## X-CompatibleLocales: enUS, enGB, deDE, frFR, esES, esMX, zhCN, zhTW, koKR, ruRU
+
+
+locales/load_locales.xml
+
+ItemCount.lua
