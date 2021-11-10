@@ -1,1 +1,2 @@
 package-as: ElvUI ItemCount
+ignore: _config.yml
