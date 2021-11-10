@@ -4,7 +4,7 @@
 ---------------------
 
 
-			 To Do 1.4.4
+			 To Do 1.5
 			---------------------
 	
 		  √* Select the ItemCount tab/page in the ElvUI config window when datatext is clicked
