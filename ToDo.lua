@@ -25,7 +25,8 @@
 
 		   * Translations for all localizations
 
-		   * Different sounds for each counted item (which also means we have to 
+		   * Major Revision: 
+		     Different sounds for each counted item (which also means we have to 
 		     iterate each item within the OnEvent function, instead of just the
 		     curitem.Item - also, each item should have a sound on/off toggle)
 
