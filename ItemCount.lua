@@ -473,7 +473,7 @@ local function OnEvent(self, event, ...)
    if GoalIsMet and event == "BAG_UPDATE" and not AlreadyAlerted then
       PlaySound(Bells[curitem.BellSound], "SFX")
       AlreadyAlerted = true
-      cTxt = L["Item Count Goal Attainied"] .. "\r" .. curitem.Item .. " = " .. QoH
+      cTxt = L["Item Count Goal Attained"] .. "\r" .. curitem.Item .. " = " .. QoH
       CombatText_AddMessage(cTxt, CombatText_StandardScroll, 
             0.9, 0.2, 0.5, "crit", true)
       print(C_YELLOW .. cTxt .. C_WHITE)

@@ -5,7 +5,7 @@ if not L then return end
 L["ElvUI ItemCount"] = "ElvUI ÍtemCuenta"
 L["Item Count Options"] = "Ítem Cuenta Opción"
 L["Alert Sound"] = "Sonido de alerta"
-L["Item Count Goal Attainied"] = "¡Cantidad objetivo se ha alcanzado!"
+L["Item Count Goal Attained"] = "¡Cantidad objetivo se ha alcanzado!"
 L["%sElvUI|r ItemCount"] = "%sElvUI|r ÍtemCuenta"
 L["Item"] = "Ítem"
 L["Goal quantity"] = "Cantidad objetivo"
