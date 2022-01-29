@@ -4,5 +4,10 @@ manual-changelog:
     filename: CHANGELOG.html
     markup-type: html
 
+required-dependencies:
+    ElvUI
+
+license-output: LICENSE
+
 ignore:
     _config.yml

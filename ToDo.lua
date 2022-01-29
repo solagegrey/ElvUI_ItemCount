@@ -23,7 +23,7 @@
 		   
 		  √* Display item and count in combat text
 		  
-		   * Disallow alt-click while elvui config is open; or find another solution to 
+		   * Disallow alt-RightClick while elvui config is open; or find another solution to 
 		     the behavior that counted items in the config interface aren't updated
 
 		   * Translations for all localizations (low priority)
