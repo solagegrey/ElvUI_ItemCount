@@ -1,2 +1,4 @@
 theme: jekyll-theme-slate
-ignore: _config.yml
+ignore: 
+    _config.yml
+    .pkgmeta
