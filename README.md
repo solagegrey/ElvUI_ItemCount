@@ -1,8 +1,9 @@
 # ElvUI_ItemCount
-ItemCount is an ElvUI datatext plugin that displays the current quantity 
-of up to five specified items in your bags (does not include quantities 
-held in the bank). When the primary counted item is gathered into your 
-inventory, ItemCount will chime and display informational text.
+ItemCount is an ElvUI datatext plugin for World of Warcraft (retail)
+that displays the current quantity of up to five specified items in
+your bags (does not include quantities held in the bank). When the
+primary counted item is gathered into your inventory, ItemCount will
+chime and display informational text.
 
 This addon is useful for non-quest items you may be gathering for 
 reputation turn-in, such as the Obsidian Warbeads, or the Fertile Spores, 
