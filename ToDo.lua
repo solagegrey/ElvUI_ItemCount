@@ -15,23 +15,6 @@
 			  . remove curitem object and references, apply features to all pattern[1-5] objects
 			  . apply loop in OnEvent to iterate pattern collection
 
-	
-		  √* Select the ItemCount tab/page in the ElvUI config window when datatext is clicked
-
-		  √* Include 3 quick-switch item Patterns - e.g. lumber x100/fur x70/ore x240
-		  √* Show item count in datatext tooltip
-
-		  √* Confirm replacement of Patterns
-		  √* Allow user choice to disable non-warning notifications, like "all patterns frozen"
-
-		  √* Allow freezing of individual Item Pattern slots (to disallow replacing them)
-		   
-		  √* Save pattern profiles
-
-		  √* Localization support
-		   
-		  √* Display item and count in combat text
-		  
 		   * Disallow alt-RightClick while elvui config is open; or find another solution to 
 		     the behavior that counted items in the config interface aren't updated
 

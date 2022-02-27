@@ -1,5 +1,3 @@
-
-
 function shallowcopy(orig)
    local orig_type = type(orig)
    local copy
@@ -16,8 +14,8 @@ end
 
 function YesNo(boolarg)
 	if boolarg then
-		return "Yes"
+		return L["Yes"]
 	else
-		return "No"
+		return L["No"]
 	end
 end
