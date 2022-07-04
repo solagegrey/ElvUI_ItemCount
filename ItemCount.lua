@@ -1,1335 +1,804 @@
-local AllowDebug = false
-local Version = "1.5.1"
+local Version = "2.0"
+local AllowDebug = true
+
 --[[
 
-                  ElvUI ItemCount
-                  Solage of Greymane
+						ElvUI ItemCount
+						Solage of Greymane
 
-                  v1.5.1
+						v2.0
+					
+					To Do:
+					
+					- don't allow Alt-Right-Click feature while config is open
+
+
 
 ]]--
-
---------------- LIBRARIES ------------------
-
-local E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
-local IC = E:NewModule('ItemCount', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
-local DT = E:GetModule('DataTexts')
-local EP = LibStub("LibElvUIPlugin-1.0")
-local ADB = LibStub("AceDB-3.0")
-local IsAddonLoaded = IsAddonLoaded
-
-IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
-
---------------- VARIABLES ------------------
-
-local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
-
-local Bells = {
-   AuctionClose  = 5275,
-   AllianceBell  = 6594, --"Sound/Doodad/Belltollalliance.Ogg",
-   HordeBell     = 6595, --"Sound/Doodad/Belltollhorde.Ogg",
-   NelfBell      = 6674, --"Sound/Doodad/Belltollnightelf.Ogg",
-   TribalBell    = 6675, --"Sound/Doodad/Belltolltribal.Ogg",
-   Ahoy          = 21174, --"Sound/Creature/Budd/Vo_Qe_Vj_Budd_Allianceship01.Ogg",
-   Sailing       = 21175, --"Sound/Creature/Budd/Vo_Qe_Vj_Budd_Allianceship02.Ogg",
-   CannonDeath   = 3641, --"Sound/Creature/Cannon/Cannondeath.Ogg",
-   Hua           = 1263, --"Sound/Character/Human/Male/Humanmaleaggroa.Ogg",
-   Erudax        = 18631, --"Sound/Creature/Erudax/Vo_Gb_Erudax_Attack01.Ogg",
-   FelReaver     = 9417, --"Sound/Creature/Felreaver/Felreaverpreaggro.Ogg",
-   LaochinHua    = 29859, --"Sound/Creature/Laochen/Vo_Laochin_Attackcrit_01.Ogg",
-   DivineBell    = 34387, --"Sound/Doodad/Go_Pa_Divinebell_Ring_Pure.Ogg",
-   KaraBell      = 9154, --"Sound/Doodad/Kharazahnbelltoll.Ogg",
-   MopGong       = 29066, --"Sound/Doodad/Wow_Mop_Intro_Sfx_Bell_Nogong_Mono.Ogg",
-   QuestAdded    = 618,
-   OrgeAggro     = 396,
-   WorldQuest    = 73277,
-   SiegeClunk    = 13893,
-   QuestComplete = 619,
-   ReadyCheck    = 8960,
-   Chime2        = 170877,
-   ScenarioStage = 31757,
-   Jewelcraft    = 10590,
-   JoinQueue     = 79740,
-   LegendaryLoot = 63971,
-   WoodStackBreak = 173222,
-}
--- it would be nice to be able to control the order of appearance in the dropdown
-local ChimeSound = 5274 --AuctionOpen
-
-local BellsIndex = {}
-local BellsLabel = {}
-local BellsList = {}
-local isCurSound, CurColor
-local edBox = {}
-local ix = 0
-local tt = {}
-local menu = {}
-local tmpprofiles = {}
 
 local format = string.format
 local join = string.join
 local floor = math.floor
 local wipe = table.wipe
 
-local hexColor = "|cff00ff96"
-local C_YELLOW = "|cffffff00"
-local C_GREEN  = "|cff00ff00"
-local C_WHITE  = "|cffffffff"
-local C_RED    = "|cffff4f8b"
-local C_TURQ   = "|cff22ee55"
-local C_AQUA   = "|cff22ee77"
-local C_MGNTA  = "|cffff0088"
-local C_PURPLE = "|cffEE22aa"
-local C_BROWN  = "|cfff4a460"
-local C_BLUE   = "|cff4fa8e3"
+local shallowcopy = shallowcopy
+local YesNo = YesNo
+
+--------------- LIBRARIES ------------------
+
+local IsAddonLoaded = IsAddonLoaded
+
+IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
+
+--------------- VARIABLES ------------------
+local newButtonText = function() end
+
+
+local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
+
+local edBox = {}
+local ix = 0
+local tt = {}
+local menu = {}
+local tmpprofiles = {}
 
 local pfList
 local enteredFrame = false
 local lastPanel
 local dtframe
 local displayString = ""
-local db, pf, curitem, p1, p2, p3, p4, p5
+local db, pf
+local initialized = false
+local Count1 = {}
+local Count2 = {}
+local Count3 = {}
+local Count4 = {}
+local Count5 = {}
 
-local QoHtext, countcolor, alertcolor
-local QoH, prevQoH = 0, 0
-local GoalIsMet = false
-local AlreadyAlerted = false
-local AddonIsInitialized = false
-local RunBefore = false
+local self = IC
+local okToAlert = false
+local NewGoal
+
+--------------- OBJECTS ------------------
 
 local defaults = {
-   profile = {
-      id = "",
-      text = "",
-      ShowItem = true,
-      Silent = false,
-      Chime = true,
-      curitem  = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-      pattern1 = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-      pattern2 = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-      pattern3 = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-      pattern4 = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-      pattern5 = {
-         Item = "Linen Cloth",
-         Goal = 0,
-         BellSound = "AllianceBell",
-         frozen = false,
-      },
-   },
+
+	global = {
+		db_version = "1001",
+	},
+	profile = {
+		id = "",
+		text = "",
+		watched = 1,
+		Debug = AllowDebug,
+		count1 = {
+			index = 1,
+			item = "Linen Cloth",
+			Goal = 0,
+			BellSound = "AllianceBell",
+			frozen = false,
+			Silent = false,
+			Chime = true,
+			Alerted = false
+		},
+		count2 = {
+			index = 2,
+			item = "Undefined 2",
+			Goal = 0,
+			BellSound = "AllianceBell",
+			frozen = false,
+			Silent = false,
+			Chime = true,
+			Alerted = false
+		},
+		count3 = {
+			index = 3,
+			item = "Undefined 3",
+			Goal = 0,
+			BellSound = "AllianceBell",
+			frozen = false,
+			Silent = false,
+			Chime = true,
+			Alerted = false
+		},
+		count4 = {
+			index = 4,
+			item = "Undefined 4",
+			Goal = 0,
+			BellSound = "AllianceBell",
+			frozen = false,
+			Silent = false,
+			Chime = true,
+			Alerted = false
+		},
+		count5 = {
+			index = 5,
+			item = "Undefined 5",
+			Goal = 0,
+			BellSound = "AllianceBell",
+			frozen = false,
+			Silent = false,
+			Chime = true,
+			Alerted = false
+		},
+	},
 }
 
+local BellsList = {}
+local BellsLabel = {}
+local BellsIndex = {}
+
+-- Bell Sound List
+local ChimeSound = 5274 --AuctionOpen
+Bells = {
+	-- it would be nice to be able to control the order of appearance in the dropdown
+
+	AuctionClose  = 5275,
+	AllianceBell  = 6594, --"Sound/Doodad/Belltollalliance.Ogg",
+	HordeBell     = 6595, --"Sound/Doodad/Belltollhorde.Ogg",
+	NelfBell      = 6674, --"Sound/Doodad/Belltollnightelf.Ogg",
+	TribalBell    = 6675, --"Sound/Doodad/Belltolltribal.Ogg",
+	Ahoy          = 21174, --"Sound/Creature/Budd/Vo_Qe_Vj_Budd_Allianceship01.Ogg",
+	Sailing       = 21175, --"Sound/Creature/Budd/Vo_Qe_Vj_Budd_Allianceship02.Ogg",
+	CannonDeath   = 3641, --"Sound/Creature/Cannon/Cannondeath.Ogg",
+	Hua           = 1263, --"Sound/Character/Human/Male/Humanmaleaggroa.Ogg",
+	Erudax        = 18631, --"Sound/Creature/Erudax/Vo_Gb_Erudax_Attack01.Ogg",
+	FelReaver     = 9417, --"Sound/Creature/Felreaver/Felreaverpreaggro.Ogg",
+	LaochinHua    = 29859, --"Sound/Creature/Laochen/Vo_Laochin_Attackcrit_01.Ogg",
+	DivineBell    = 34387, --"Sound/Doodad/Go_Pa_Divinebell_Ring_Pure.Ogg",
+	KaraBell      = 9154, --"Sound/Doodad/Kharazahnbelltoll.Ogg",
+	MopGong       = 29066, --"Sound/Doodad/Wow_Mop_Intro_Sfx_Bell_Nogong_Mono.Ogg",
+	QuestAdded    = 618,
+	OrgeAggro     = 396,
+	WorldQuest    = 73277,
+	SiegeClunk    = 13893,
+	QuestComplete = 619,
+	ReadyCheck    = 8960,
+	Chime2        = 170877,
+	ScenarioStage = 31757,
+	Jewelcraft    = 10590,
+	JoinQueue     = 79740,
+	LegendaryLoot = 63971,
+	WoodStackBreak = 173222,
+}
 
 --------------- FUNCTIONS ------------------
 
-local function shallowcopy(orig)
-   local orig_type = type(orig)
-   local copy
-   if orig_type == 'table' then
-      copy = {}
-      for orig_key, orig_value in pairs(orig) do
-         copy[orig_key] = orig_value
-      end
-    else -- number, string, boolean, etc
-      copy = orig
-    end
-    return copy
+
+local function getText(cObj)
+	-- DataText display
+
+	local DataText
+
+	local countcolor = C_WHITE  -- default white
+	local alertcolor = C_MGNTA  -- alert redviolet?
+
+	if not cObj.item then return "Item Count" end
+
+	if cObj.Goal and tonumber(cObj.Goal) > 0 then
+		countcolor = alertcolor
+	end
+	DataText = countcolor ..string.format(" %.0f ", cObj.QoH) .."|r" .." " ..cObj.item
+
+	return DataText
+
 end
 
 
-local function CopyPattern(ptn1, ptn2)
-   if ptn1.frozen then return end
-   ptn1.Item = ptn2.Item
-   ptn1.Goal = ptn2.Goal
-   ptn1.BellSound = ptn2.BellSound
-end
+local function Refresh(cObj, pAlert)
+-- find current QoH; chime or sound bell if appropriate
 
+	if not pAlert then pAlert = false; end
 
-function ItemChanged(newitm)
-   -- do nothing if the item isn't actually new
-   if curitem.Item == newitm then return end
-   if AllowDebug and pf.Debug then
-      print(C_AQUA.. L["ElvUI ItemCount"].. ": " ..C_YELLOW.. "ItemChanged "
-         ..C_WHITE.. "from " ..curitem.Item.. " to " ..newitm)
-   end
+	local NewQuantity
+	local newText
 
-   curitem.Item = newitm
-   -- if this item is in the Pattern list, then recall its Pattern
-   if p1.Item == newitm then
-      if not pf.Silent then print(C_AQUA..L["ElvUI ItemCount"]..": "..
-         C_YELLOW.."Recalling item Pattern for "..newitm) end
-      CopyPattern(curitem, p1)
-   elseif p2.Item == newitm then
-      if not pf.Silent then print(C_AQUA..L["ElvUI ItemCount"]..": "..
-         C_YELLOW.."Recalling item Pattern for "..newitm) end
-      CopyPattern(curitem, p2)
-   elseif p3.Item == newitm then
-      if not pf.Silent then print(C_AQUA..L["ElvUI ItemCount"]..": "..
-         C_YELLOW.."Recalling item Pattern for "..newitm) end
-      CopyPattern(curitem, p3)
-   elseif p4.Item == newitm then
-      if not pf.Silent then print(C_AQUA..L["ElvUI ItemCount"]..": "..
-         C_YELLOW.."Recalling item Pattern for "..newitm) end
-      CopyPattern(curitem, p4)
-   elseif p5.Item == newitm then
-      if not pf.Silent then print(C_AQUA..L["ElvUI ItemCount"]..": "..
-         C_YELLOW.."Recalling item Pattern for "..newitm) end
-      CopyPattern(curitem, p5)
-   else
-      -- confirm replace; replace first unfrozen saved item with current
-      if not p1.frozen then E:StaticPopup_Show('ConfirmReplace', newitm, p1.Item)
-      elseif not p2.frozen then E:StaticPopup_Show('ConfirmReplace', newitm, p2.Item)
-      elseif not p3.frozen then E:StaticPopup_Show('ConfirmReplace', newitm, p3.Item)
-      elseif not p4.frozen then E:StaticPopup_Show('ConfirmReplace', newitm, p4.Item)
-      elseif not p5.frozen then E:StaticPopup_Show('ConfirmReplace', newitm, p5.Item)
-      elseif not pf.Silent then 
-         print(C_AQUA..L["ElvUI ItemCount"]..": "..C_YELLOW
-            ..L["NotSavingPattern"]..newitm)
-      end
-   end
-end
+	if cObj.QoH == nil then
+		cObj.QoH = 0
+		pAlert = false
+	end
 
+	NewQuantity = GetItemCount(cObj.item)
+	DeltaQ = NewQuantity - cObj.QoH
+	if DeltaQ == 0 then return end
 
-function GoalChanged(newgoal)
-   -- do nothing if the goal hasn't actually changed
-   if tonumber(curitem.Goal) == newgoal then return end
-   if AllowDebug and pf.Debug then
-      print(C_AQUA..L["ElvUI ItemCount"]..": " ..C_YELLOW.. "GoalChanged "
-         ..C_WHITE.."from "..tostring(curitem.Goal).." to "..tostring(newgoal))
-   end
+	if pAlert and DeltaQ > 0 then -- INCREASED
 
-   curitem.Goal = newgoal   
-   if p1.Item == curitem.Item and not p1.frozen then
-      p1.Goal = newgoal
-   elseif p2.Item == curitem.Item and not p2.frozen then
-      p2.Goal = newgoal
-   elseif p3.Item == curitem.Item and not p3.frozen then
-      p3.Goal = newgoal
-   elseif p4.Item == curitem.Item and not p4.frozen then
-      p4.Goal = newgoal
-   elseif p5.Item == curitem.Item and not p5.frozen then
-      p5.Goal = newgoal
-   end
-end
+		debugSay("Alerting/Chiming - NewQuantity = " .. tonumber(NewQuantity) ..", Goal = " 
+			.. tonumber(cObj.Goal) ..", already Alerted = " .. YesNo(cObj.Alerted))
 
+		if cObj.QoH < cObj.Goal and NewQuantity >= cObj.Goal then
+			if cObj.Alerted == false then
+				-- if previous QoH was below goal and new qty is over goal then Sound Alert
+				-- UNLESS it's already been sounded, e.g. cascade of BAG_UPDATE events
+				-- play BellSound, Show Goal Met Text
+				if not cObj.Silent then PlaySound(Bells[cObj.BellSound]); end
+				cTxt = L["Item Count Goal Attained"] .. "\r" .. cObj.item .. " = " .. NewQuantity
+				CombatText_AddMessage(cTxt, CombatText_StandardScroll, 
+					0.9, 0.2, 0.5, "crit", true)
+				cObj.Alerted = true
+				print(C_YELLOW .. cTxt .. C_WHITE)
+			end
+		else
+			-- play Chime, Show Got Qty Text
+			cTxt = "+" ..tostring(DeltaQ) .." ".. cObj.item
+			if cObj.Chime then PlaySound(ChimeSound,"SFX"); end
+			CombatText_AddMessage(cTxt, CombatText_StandardScroll, 2, 2, 1, "sticky", true)
+			--0.9, 0.2, 0.5, "sticky", true)
+			print(C_YELLOW .. cTxt ..C_WHITE)
+		end
+	elseif DeltaQ < 0 and cObj.QoH > NewQuantity then
+		-- if DECREASED to below old quantity then reset Alerted flag
+		cObj.Alerted = false
+	end
 
-function SoundChanged(newsound)
-   -- do nothing if the sound hasn't actually changed
-   if curitem.BellSound == newsound then return end
-   if AllowDebug and pf.Debug then
-      print(C_AQUA.. L["ElvUI ItemCount"].. ": " ..C_YELLOW.. "SoundChanged "..
-         C_WHITE.. "from " ..curitem.BellSound.. " to " ..newsound)
-   end
-   curitem.BellSound = newsound
-
-   if p1.Item == curitem.Item then
-      if not p1.frozen then p1.BellSound = newsound end
-   elseif p2.Item == curitem.Item then
-      if not p2.frozen then p2.BellSound = newsound end
-   elseif p3.Item == curitem.Item then
-      if not p3.frozen then p3.BellSound = newsound end
-   elseif p4.Item == curitem.Item then
-      if not p4.frozen then p4.BellSound = newsound end
-   elseif p5.Item == curitem.Item then
-      if not p5.frozen then p5.BellSound = newsound end
-   end
-end
-
-
-local function RefreshBellsList()
-   local tt = {}
-
-   if AllowDebug and pf.Debug then
-      --print(C_AQUA.."RefreshBellsList")
-   end
-
-   BellsList = wipe(BellsList)
-   for k,v in pairs(Bells) do
-      isCurSound = (curitem.BellSound == k)
-      CurColor = C_WHITE
-      if isCurSound then CurColor = C_GREEN end
-      tt = {
-         text = k,
-         value = k,
-         arg1 = k,
-         checked = isCurSound,
-         colorCode = CurColor,
-         isNotRadio = true,
-         keepShowOnClick = true,
-         func = function()
-            if not (curitem.BellSound == k) then
-               if not pf.Silent then
-                  print(C_AQUA..L["ElvUI ItemCount"]..": " ..C_YELLOW.. L["alert sound is "]..C_WHITE..k)
-               end
-               colorCode = C_GREEN
-               checked = true
-               SoundChanged(k)
-               curitem.BellSound = k
-               RefreshBellsList()
-            end
-            PlaySound(Bells[curitem.BellSound], "Master")
-         end,
-      }
-      table.insert(BellsList, tt)
-   end
-end
-
-
-local function ShowFrozen(IsFrozen)
-   if IsFrozen then
-      return C_AQUA.."** "
-   else
-      return C_WHITE.."   "
-   end
-end
-
-
-local function MakeMenu()
-   local tt = {}
-   menu = wipe(menu)
-
-   RefreshBellsList()
-   local debugmenu = ""
-   if AllowDebug then
-      debugmenu = { text = C_GREEN..L["Debug"], checked = pf.Debug, isNotRadio = true, 
-         keepShownOnClick = false,
-         func = function() 
-              checked = not checked
-            pf.Debug = checked
-         end, }
-   end
-   menu = {
-      { text = L["Item Count Options"], colorCode = C_YELLOW, isTitle = true, 
-         isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-
-      debugmenu,
-
-      { text = L["Show Item Name"], colorCode = C_GREEN, checked = pf.ShowItem, notCheckable = false, 
-         isNotRadio = true, keepShownOnClick = false, 
-         func = function() 
-            checked = not checked
-            pf.ShowItem = checked 
-         end, },
-
-      { text = L["Chime on Qty Increase"], colorCode = C_GREEN, checked = pf.Chime, notCheckable = false, 
-         isNotRadio = true, keepShownOnClick = false, 
-         func = function() 
-            checked = not checked
-            pf.Chime = checked
-         end, },
-
-      { text = L["Silent"], colorCode = C_GREEN, checked = pf.Silent, notCheckable = false, 
-         isNotRadio = true, keepShownOnClick = false, tooltipText = L["SilentTooltip"],
-         func = function() 
-            checked = not checked
-            --ChimeChanged(checked)
-            pf.Silent = checked
-         end, },
-
-      { text = L["Change Goal Quantity"].." ("..tostring(curitem.Goal)..")", isNotRadio = true, 
-         notCheckable = true, keepShownOnClick = false, 
-         func = function()
-            E:StaticPopup_Show('GetGoalQty')
-         end, },
-
-      { text = L["Alert Sound"], colorCode = C_YELLOW, isTitle = false, 
-         hasArrow = true, isNotRadio = true, 
-         notCheckable = true, menuList = BellsList, keepShownOnClick = true, 
-         justifyH = "RIGHT", },
-
-      { text = L["--- Item List ---"], isTitle = 0, 
-         isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-      { text = L["Checked = Frozen"], isTitle = 0,
-         isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-      { text = L["Left-click to freeze/unfreeze"], isTitle = 0,
-         isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-      { text = "1. "..p1.Item.." - "..tostring(p1.Goal), colorCode = C_YELLOW, 
-         isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-         checked = p1.frozen, keepShownOnClick = true,
-         func = function() checked = not checked; p1.frozen = checked; end,
-         menuList = {
-            { text = L["Count This Item"], isNotRadio = true, notCheckable = true, 
-               func = function() CopyPattern(curitem, p1); newButtonText(curitem.Item); end, }, },
-      },
-      { text = "2. "..p2.Item.." - "..tostring(p2.Goal), colorCode = C_YELLOW,
-         isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-         checked = p2.frozen, keepShownOnClick = true,
-         func = function() checked = not checked; p2.frozen = checked; end,
-         menuList = {
-            { text = L["Count This Item"], isNotRadio = true, notCheckable = true, 
-               func = function() CopyPattern(curitem, p2); newButtonText(curitem.Item); end, },
-         },
-      },
-      { text = "3. "..p3.Item.." - "..tostring(p3.Goal), colorCode = C_YELLOW, 
-         isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-         checked = p3.frozen, keepShownOnClick = true,
-         func = function() checked = not checked; p3.frozen = checked; end,
-         menuList = {
-            { text = L["Count This Item"], isNotRadio = true, notCheckable = true, 
-               func = function() CopyPattern(curitem, p3); newButtonText(curitem.Item); end, },
-         },
-      },
-      { text = "4. "..p4.Item.." - "..tostring(p4.Goal), colorCode = C_YELLOW, 
-         isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-         checked = p4.frozen, keepShownOnClick = true,
-         func = function() checked = not checked; p4.frozen = checked; end,
-         menuList = {
-            { text = L["Count This Item"], isNotRadio = true, notCheckable = true, 
-               func = function() CopyPattern(curitem, p4); newButtonText(curitem.Item); end, },
-         },
-      },
-      { text = "5. "..p5.Item.." - "..tostring(p5.Goal), colorCode = C_YELLOW, 
-         isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-         checked = p5.frozen, keepShownOnClick = true,
-         func = function() checked = not checked; p5.frozen = checked; end,
-         menuList = {
-            { text = L["Count This Item"], isNotRadio = true, notCheckable = true, 
-               func = function() CopyPattern(curitem, p5); newButtonText(curitem.Item); end, },
-         },
-      },
-
-      { text = L["Close"], isNotRadio = true, notCheckable = true, colorCode = C_YELLOW,
-         tooltipTitle = " ",
-         tooltipText = L["Click here to close menu"], keepShownOnClick = false, 
-         justifyH = "CENTER", },
-   }
+	cObj.QoH = NewQuantity
 
 end
 
 
 local function OnEvent(self, event, ...)
-   if self == nil then
-      print(L["OnEventSelfError"])
-      return
-   end
+	if self == nil then
+		print(L["OnEventSelfError"])
+		return
+	end
 
-   lastPanel = self
-   if not pf then
-      pf = defaults.profile
-      InitDB()
-   end
+	if not IC.initialized then
+		IC:OnInitialize()
+	end
 
-   if pf.id and pf.text then
-      self.text:SetFormattedText(displayString, pf.text)
-   end
+	if event == "BAG_UPDATE_DELAYED" then
+		debugSay(C_YELLOW.."Refresh - OnEvent("..YesNo(okToAlert)..")")
 
-   QoH = GetItemCount(curitem.Item)
-   if not AddonIsInitialized then
-      AddonIsInitialized = true
-      prevQoH = QoH
-      AlreadyAlerted = (QoH >= tonumber(curitem.Goal))
-   end
+		-- true = Alert or Chime if appropriate
+		Refresh(Count1, okToAlert)
+		Refresh(Count2, okToAlert)
+		Refresh(Count3, okToAlert)
+		Refresh(Count4, okToAlert)
+		Refresh(Count5, okToAlert)
 
-   -- only update the button and alert if qty has changed
-   if RunBefore and QoH == prevQoH then return end
-   RunBefore = true
+		if not okToAlert then okToAlert = true; end
 
-   if tonumber(curitem.Goal) > 0 then
-     GoalIsMet = (QoH >= tonumber(curitem.Goal))
-   else
-     curitem.Goal = 0
-     GoalIsMet = false
-   end
+	end
 
-   -- in case the quantity has gone down (sold, converted, turned in, whatever)
-   if QoH < prevQoH and not GoalIsMet then AlreadyAlerted = false; end
+	if pf.watched == 1 then ButtonText = getText(Count1)
+	elseif pf.watched == 2 then ButtonText = getText(Count2)
+	elseif pf.watched == 3 then ButtonText = getText(Count3)
+	elseif pf.watched == 4 then ButtonText = getText(Count4)
+	elseif pf.watched == 5 then ButtonText = getText(Count5)
+	end
 
-   -- ding if quantity increased
-   if event == "BAG_UPDATE" and pf.Chime and QoH > prevQoH and ((not GoalIsMet) or AlreadyAlerted) then
-      NumGot = QoH - prevQoH
-      cTxt = "+" ..tostring(NumGot) .." ".. curitem.Item
-      --print(C_AQUA..L["ElvUI ItemCount"]..": " ..C_YELLOW.. "qty update - you now have "..curitem.Item..C_WHITE..string.format("x%.0f", QoH))
-      --PlaySoundFile("Interface/AddOns/ElvUI_ItemCount/media/bell-01.ogg", "SFX")
-	  PlaySound(ChimeSound,"SFX")
-	  CombatText_AddMessage(cTxt, CombatText_StandardScroll, 0.9, 0.2, 0.5, "sticky", true)
-   end
+	self.text:SetFormattedText(displayString, ButtonText)
 
-   prevQoH = QoH
-
-   if GoalIsMet and event == "BAG_UPDATE" and not AlreadyAlerted then
-      PlaySound(Bells[curitem.BellSound], "SFX")
-      AlreadyAlerted = true
-      cTxt = L["Item Count Goal Attained"] .. "\r" .. curitem.Item .. " = " .. QoH
-      CombatText_AddMessage(cTxt, CombatText_StandardScroll, 
-            0.9, 0.2, 0.5, "crit", true)
-      print(C_YELLOW .. cTxt .. C_WHITE)
-
-   end
-
-   countcolor = C_WHITE  -- default white
-   alertcolor = C_MGNTA  -- alert redviolet?
-   QoHtext = "-"
-   if not QoH then
-      QoH = 0
-   end
-   if tonumber(curitem.Goal) > 0 and GoalIsMet then
-      countcolor = alertcolor
-   end
-   QoHtext = countcolor..string.format(" %.0f ", QoH).."|r"
-   if pf.ShowItem == true then
-      QoHtext = QoHtext..curitem.Item
-   end
-
-   pf.text = QoHtext
-   self.text:SetFormattedText(displayString, QoHtext)
+	lastPanel = self
 
 end
 
 
-local function YesNo(boolarg)
-   if boolarg then
-      return L["Yes"]
-   else
-      return L["No"]
-   end
+local function newButtonText()
+
+	debugSay("Refresh - newButtonText()")
+
+	Refresh(Count1, false)
+	Refresh(Count2, false)
+	Refresh(Count3, false)
+	Refresh(Count4, false)
+	Refresh(Count5, false)
+
+	OnEvent(lastPanel)
+
 end
 
 
-local function OnEnter(self)
-   DT:SetupTooltip(self)
-   enteredFrame = true
+local function doToolTip(cObj)
 
-   DT.tooltip:AddLine((L["%sElvUI|r ItemCount"].." "..L["version"].." "..IC.version):format(hexColor), 1, 1, 1)
-   DT.tooltip:AddLine(" ")
-   DT.tooltip:AddDoubleLine(C_YELLOW..L["Item"], C_WHITE..curitem.Item, 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_YELLOW..L["Qty in bags"], C_WHITE..string.format("%.0f", QoH), 1, 1, 1, 0.8, 0.8, 0.8)
+	local chimestr = "Chime "..C_RED.."OFF"
+	local silentstr = "Silent "..C_RED.."OFF"
+	local sKey = C_AQUA.." "
 
-   if tonumber(curitem.Goal) > 0 then
-       DT.tooltip:AddDoubleLine(C_YELLOW..L["Goal quantity"], C_WHITE..tostring(curitem.Goal), 1, 1, 1, 0.8, 0.8, 0.8)
-      if GoalIsMet then
-         DT.tooltip:AddLine(C_PURPLE..L["GOAL QUANTITY ACHIEVED"])
-      end
-      DT.tooltip:AddDoubleLine(C_YELLOW..L["Alert Sound"], C_WHITE..curitem.BellSound, 1, 1, 1, 0.8, 0.8, 0.8)
-   end
+	if not cObj or not cObj.item then return; end
+	if not cObj.QoH then cObj.QoH = 0 end
+	if not cObj.Goal then cObj.Goal = 0 end
 
-   DT.tooltip:AddDoubleLine(C_YELLOW..L["Chime"], C_WHITE..YesNo(pf.Chime), 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_YELLOW..L["Silent"], C_WHITE..YesNo(pf.Silent), 1, 1, 1, 0.8, 0.8, 0.8)
+	if cObj.Chime == true then chimestr = "Chime "..C_GREEN.."ON"; end
+	if cObj.Silent == true then silentstr = "Silent "..C_GREEN.."ON"; end
 
-   if AllowDebug and pf.Debug then
-      DT.tooltip:AddLine(" ")
-      -- localization not necessary for debug messages
-      DT.tooltip:AddDoubleLine(C_YELLOW.."GoalIsMet", C_WHITE..tostring(GoalIsMet))
-      DT.tooltip:AddDoubleLine(C_YELLOW.."AlreadyAlerted", C_WHITE..tostring(AlreadyAlerted))
-      DT.tooltip:AddDoubleLine(C_YELLOW.."prevQoH", C_WHITE..tostring(prevQoH))
-   end
+	if cObj.frozen == true then sKey = sKey.."F"; end
+	if pf.watched == cObj.index then sKey = sKey.."W"; end
+	if cObj.QoH >= cObj.Goal and cObj.Goal > 0 then sKey = sKey.."#" end
 
-   DT.tooltip:AddLine(" ")
-   DT.tooltip:AddDoubleLine(C_YELLOW..L[" - Item List - "], C_YELLOW..L["In Bags"], 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_WHITE.."1. "..ShowFrozen(p1.frozen)..p1.Item..
-      C_WHITE.." ("..tostring(p1.Goal)..")", hexColor..tostring(GetItemCount(p1.Item)), 1, 1, 1, 0.8, 0.8, 0.8) 
-   DT.tooltip:AddDoubleLine(C_WHITE.."2. "..ShowFrozen(p2.frozen)..p2.Item..
-      C_WHITE.." ("..tostring(p2.Goal)..")", hexColor..tostring(GetItemCount(p2.Item)), 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_WHITE.."3. "..ShowFrozen(p3.frozen)..p3.Item..
-      C_WHITE.." ("..tostring(p3.Goal)..")", hexColor..tostring(GetItemCount(p3.Item)), 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_WHITE.."4. "..ShowFrozen(p4.frozen)..p4.Item..
-      C_WHITE.." ("..tostring(p4.Goal)..")", hexColor..tostring(GetItemCount(p4.Item)), 1, 1, 1, 0.8, 0.8, 0.8)
-   DT.tooltip:AddDoubleLine(C_WHITE.."5. "..ShowFrozen(p5.frozen)..p5.Item..
-      C_WHITE.." ("..tostring(p5.Goal)..")", hexColor..tostring(GetItemCount(p5.Item)), 1, 1, 1, 0.8, 0.8, 0.8)
+	DT.tooltip:AddDoubleLine(tostring(cObj.index)..". " ..cObj.item..sKey, 
+		C_YELLOW.."QoH "..string.format("%.0f", cObj.QoH), 1, 1, 1, 0.8, 0.8, 0.8)
+	DT.tooltip:AddDoubleLine(" "..C_WHITE..cObj.BellSound, 
+		C_YELLOW.."Goal "..C_WHITE..tostring(cObj.Goal), 1, 1, 1, 0.8, 0.8, 0.8)
 
-   DT.tooltip:AddLine(" ")
-   DT.tooltip:AddLine(L["Left-Click datatext: configuration"])
-   DT.tooltip:AddLine(L["RightClick datatext: menu"])
-   DT.tooltip:AddLine(L["Alt-RightClick inventory: change item"])
+	DT.tooltip:AddDoubleLine("  "..C_WHITE..chimestr, C_WHITE..silentstr, 1, 1, 1, 0.8, 0.8, 0.8)
+	DT.tooltip:AddLine(" ")
 
-   DT.tooltip:AddLine(" ")
-   DT.tooltip:AddLine(L["** indicates a Frozen item - won't be overwritten"])
- 
-   DT.tooltip:Show()
 end
 
 
-local function OnUpdate(self)
-   if not dtframe then dtframe = self end
+local function OnEnter(IC)
+-- Show DataText Dropdown
+
+	DT:SetupTooltip(IC)
+	enteredFrame = true
+
+	-- Header
+	DT.tooltip:AddLine((L["%sElvUI|r ItemCount"].." ".. L["version"].." "..Version):format(hexColor), 1, 1, 1)
+	DT.tooltip:AddLine(" ")
+
+	doToolTip(Count1)
+	doToolTip(Count2)
+	doToolTip(Count3)
+	doToolTip(Count4)
+	doToolTip(Count5)
+
+	DT.tooltip:AddLine(" ")
+	DT.tooltip:AddLine(L["Left-Click datatext: configuration"])
+	DT.tooltip:AddLine(L["RightClick datatext: menu"])
+	DT.tooltip:AddLine(L["Alt-RightClick inventory: change item"])
+
+	DT.tooltip:AddLine(" ")
+	DT.tooltip:AddLine("KEY: ".. C_AQUA.."F=frozen  W=watched  #=goal met")
+
+	DT.tooltip:Show()
+
 end
 
 
-function newButtonText(item)
-   -- force refresh of datatext display
-   if AllowDebug and pf.Debug then
-      print(C_AQUA.. L["ElvUI ItemCount"]..": " ..C_YELLOW.. "newButtonText(\"" ..C_WHITE..item..C_YELLOW.. "\")")
-   end
-   curitem.Item = item
-   prevQoH = -1
-   OnEvent(lastPanel)
-   if lastPanel ~= nil then
-   end
-end
-
-
-local function PrintNewGoal(newgoal)
-   if not pf.Silent then
-      print(C_AQUA.. L["ElvUI ItemCount"]..": " ..C_YELLOW.. "New Goal Quantity = " ..C_WHITE..tostring(newgoal))
-   end
+local function OnUpdate(IC)
+-- DO NOT PUT ANYTHING HERE that you don't want to run every millisecond
+	if not dtframe then dtframe = IC end
 end
 
 
 local function Open_IC_Options()
-   E:ToggleOptionsUI()
-   local ACD = E.Libs.AceConfigDialog
-   if ACD then ACD:SelectGroup('ElvUI', "itemcount") end
-end
-
-
-local function Click(self, btn)
--- OPEN Configuration Dialog
-
-   DT.tooltip:Hide()
-   if btn == "RightButton" then
-      MakeMenu()
-      EasyMenu(menu, menuFrame, "cursor", -10, -10, "MENU");
-   else
-      Open_IC_Options()
-   end
-
+	E:ToggleOptionsUI()
+	local ACD = E.Libs.AceConfigDialog
+	if ACD then ACD:SelectGroup('ElvUI', "itemcount"); end
 end
 
 
 local function getProfileList(db, nocurrent)
-   -- clear old profile table
-   local profiles = {}
-   
-   -- copy existing profiles into the table
-   local curr = db.keys.profile
-   for i,v in pairs(db:GetProfiles(tmpprofiles)) do 
-      if not (nocurrent and v == curr) then profiles[v] = v end 
-   end
+	-- clear old profile table
+	local profiles = {}
 
-   return profiles
-end
+	-- copy existing profiles into the table
+	local curr = db.keys.profile
+	for i,v in pairs(db:GetProfiles(tmpprofiles)) do 
+		if not (nocurrent and v == curr) then profiles[v] = v end 
+	end
 
-
-local function InjectOptions()
-   if not pf then
-      pf = defaults.profile
-      InitDB()
-   end
-   if not E.Options.args.itemcount then
-      E.Options.args.itemcount = {
-         order = -2,
-         type = 'group',
-         name = 'Item Count',
-         args = {
-            header = {
-               type     = "header",
-               name     = L["ItemCount"] .. C_GREEN ..' ' .. Version,
-               order    = 20,
-            },
-            space0 = {
-               type     = 'description',
-               name     = '',
-               order    = 40,
-            },
-            header2b = {
-               type     = "header",
-               name     = "       General Options       ",
-               order    = 50,
-            },
-            ShowItem = {
-               type     = 'toggle',
-               name     = L["Show Item Name"],
-               desc     = L["Show the item name in the datatext?"],
-               get      = function() return pf.ShowItem end,
-               set      = function(info, value)
-                  pf.ShowItem = value
-                  newButtonText(curitem.Item)
-               end,
-               order    = 60,
-            },
-            Chime = {
-               type      = 'toggle',
-               name      = L["Chime on Qty Increase"],
-               desc      = L["Sound a bell when the watched item increases in quantity?"],
-               get      = function() return pf.Chime end,
-               set      = function(info, value)
-                  pf.Chime = value
-                  newButtonText(curitem.Item)
-               end,
-               order      = 70,
-            },
-            Silent = {
-               type      = 'toggle',
-               name      = L["Silent"],
-               desc      = L["Don't announce everything, only what's important."],
-               get      = function() return pf.Silent end,
-               set      = function(info, value)
-                  pf.Silent = value
-                  newButtonText(curitem.Item)
-               end,
-               order      = 80,
-            },
-            Debug = {
-               type      = 'toggle',
-               name      = L["Debug"],
-               desc      = L["Print Debug messages"],
-               get      = function() return pf.Debug end,
-               set      = function(info, value)
-                  pf.Debug = value
-                  newButtonText(curitem.Item)
-               end,
-               hidden   = not AllowDebug,
-               order      = 90,
-            },
-            BellSound = {
-               type     = 'select',
-               name     = L["Alert Sound"],
-               style    = "dropdown",
-               values   = BellsLabel,
-               set      = function(info, value)
-                  SoundChanged(BellsLabel[value])
-                  curitem.BellSound = BellsLabel[value]
-                  PlaySound(Bells[curitem.BellSound], "SFX")
-                  newButtonText(curitem.Item)
-               end,
-               get      = function() return BellsIndex[curitem.BellSound] end,
-               order    = 100,
-            },
-            
-            header2c = {
-               type     = 'header',
-               name     = L["Current Item"],
-               order    = 200,
-            },
-            CurrentItem = {
-               type     = 'input',
-               name     = L["Item"],
-               desc     = L["Inventory item to track quantity"],
-               get      = function() return curitem.Item end,
-               set      = function(info, value)
-                  ItemChanged(value)
-                  curitem.Item = value
-                  QoH = GetItemCount(value)
-                  AlreadyAlerted = (tonumber(curitem.Goal) <= QoH)
-                  newButtonText(value)
-               end,
-               validate = function(info, value)
-                  local tcount
-                  tcount = GetItemCount(value)
-                  if tcount < 1 then 
-                     E:StaticPopup_Show('BadItem','','')
-                     return false
-                  end
-                  return true
-               end,
-               usage    = L["Enter an item from your inventory - type the name, or drag from your bags, or Alt-RightClick on an item in your bags"],
-               width    = full,
-               order    = 210,
-            },
-            Goal = {
-               type     = 'input',
-               name     = L["Goal Quantity"],
-               desc     = L["Enter zero to disable, positive integer for alert when qty reached"],
-               get      = function() return tostring(curitem.Goal) end,
-               set      = function(info, value)
-                  GoalChanged(tonumber(value))
-                  curitem.Goal = tonumber(value)
-                  AlreadyAlerted = (tonumber(curitem.Goal) < QoH)
-                  newButtonText(curitem.Item)
-               end,
-               validate = function(info, value)
-                  local tnum
-                  tnum = tonumber(value)
-                  if not tnum or tnum < 0 then
-                      E:StaticPopup_Show('BadGoal', '', '')
-                      return false
-                  end
-                  return true
-               end,
-               usage    = L["Enter an integer zero or higher"],
-               width    = full,
-               order    = 220,
-            },
-
-      -- PATTERN SETS (profiles)
-            header2 = {
-               type      = 'header',
-               name      = L["Pattern Sets"],
-               order      = 300,
-            },
-            space5 = {
-               type       = 'description',
-               name      = "",
-               order      = 310,
-            },
-            selectprofile = {
-               name      = L["Select Pattern Set"],
-               type       = "select",
-               get       = function() return db:GetCurrentProfile() end,
-               set       = function(info, value) db:SetProfile(value) end,
-               values    = function() return getProfileList(db, false)   end,
-               order      = 320,
-            },
-            copyprofile = {
-               type      = 'select',
-               style     = 'dropdown',
-               desc      = L["This only copies ItemCount Pattern Sets, never any ElvUI configuration"],
-               name      = L["Copy Pattern Set"],
-               get       = function() return false end,
-               set       = function(info, value) db:CopyProfile(value) end,
-               values    = function() return getProfileList(db, true) end,
-               order     = 340,
-            },
-            space6 = {
-               type      = 'description',
-               name      = "",
-               order     = 350,
-            },
-            newprofile = {
-               type      = 'input',
-               name      = L["New Pattern Set"],
-               get       = function() return false end,
-               set       = function(info, value) db:SetProfile(value) end,
-               order     = 360,
-            },
-            rmprofile = {
-               type      = 'select',
-               style     = 'dropdown',
-               name      = L["Delete Pattern Set"],
-               get       = function() return false end,
-               set       = function(info, value) db:DeleteProfile(value) end,
-               values    = function() return getProfileList(db, true) end,
-               confirm   = true,
-               confirmText = L["Are you sure you want to delete the selected pattern set?"],
-               order     = 370,
-            },
-
-      -- ITEM LIST
-            header3 = {
-               type     = 'header',
-               name     = "  Item List  ",
-               order    = 500,
-            },
-            item1group = {
-               type = 'group',
-               name = "Item 1",
-               order = 510,
-               args = {
-                  Item1 = {
-                     type      = 'input',
-                     name      = "Item",
-                     get       = function() return p1.Item end,
-                     set       = function(info, value)
-                        p1.Item = value
-                     end,
-                     order    = 10,
-                  },               
-                  Lock1 = {
-                     type     = 'toggle',
-                     name     = "Freeze",
-                     desc     = "Keep Item 1 from being overwritten",
-                     get      = function() return p1.frozen end,
-                     set      = function(info, value)
-                        p1.frozen = value
-                        newButtonText(curitem.Item)
-                     end,
-                     order     = 20,
-                  },
-                  Qty1 = {
-                     type     = 'input',
-                     name     = "Quantity",
-                     get      = function() return tostring(p1.Goal) end,
-                     set      = function(info, value)
-                        p1.Goal = tonumber(value)
-                     end,
-                     validate = function(info, value)
-                        local tnum
-                        tnum = tonumber(value)
-                        if not tnum or tnum < 0 then
-                            E:StaticPopup_Show('BadGoal', '', '')
-                            return false
-                        end
-                        return true
-                     end,
-                     order    = 30,
-                  },
-                  newline    = {
-                     type    = 'description',
-                     name    = '',
-                     order   = 39,
-                  },
-                  count1 = {
-                     type     = 'execute',
-                     name     = L['Count This Item'],
-                     func     = function() CopyPattern(curitem, p1); newButtonText(curitem.Item); end,
-                     order    = 40,
-                  },
-               },
-            },
-            item2group = {
-               type = 'group',
-               name = "Item 2",
-               order = 520,
-               args = {
-                  Item2 = {
-                     type      = 'input',
-                     name      = "Item",
-                     get       = function() return p2.Item end,
-                     set       = function(info, value)
-                        p2.Item = value
-                     end,
-                     order    = 10,
-                  },               
-                  Lock2 = {
-                     type     = 'toggle',
-                     name     = "Freeze",
-                     desc     = "Keep Item 2 from being overwritten",
-                     get      = function() return p2.frozen end,
-                     set      = function(info, value)
-                        p2.frozen = value
-                        newButtonText(curitem.Item)
-                     end,
-                     order     = 20,
-                  },
-                  Qty2 = {
-                     type     = 'input',
-                     name     = "Quantity",
-                     get      = function() return tostring(p2.Goal) end,
-                     set      = function(info, value)
-                        p2.Goal = tonumber(value)
-                     end,
-                     validate = function(info, value)
-                        local tnum
-                        tnum = tonumber(value)
-                        if not tnum or tnum < 0 then
-                            E:StaticPopup_Show('BadGoal', '', '')
-                            return false
-                        end
-                        return true
-                     end,
-                     order    = 30,
-                  },
-                  newline    = {
-                     type    = 'description',
-                     name    = '',
-                     order   = 39,
-                  },
-                  count2 = {
-                     type     = 'execute',
-                     name     = L['Count This Item'],
-                     func     = function() CopyPattern(curitem, p2); newButtonText(curitem.Item); end,
-                     order    = 40,
-                  },
-               },
-            },
-            item3group = {
-               type = 'group',
-               name = "Item 3",
-               order = 530,
-               args = {
-                  Item3 = {
-                     type      = 'input',
-                     name      = "Item",
-                     get       = function() return p3.Item end,
-                     set       = function(info, value)
-                        p3.Item = value
-                     end,
-                     order    = 10,
-                  },
-                  Lock3 = {
-                     type     = 'toggle',
-                     name     = "Freeze",
-                     desc     = "Keep Item 3 from being overwritten",
-                     get      = function() return p3.frozen end,
-                     set      = function(info, value)
-                        p3.frozen = value
-                        newButtonText(curitem.Item)
-                     end,
-                     order     = 20,
-                  },
-                  Qty3 = {
-                     type     = 'input',
-                     name     = "Quantity",
-                     get      = function() return tostring(p3.Goal) end,
-                     set      = function(info, value)
-                        p3.Goal = tonumber(value)
-                     end,
-                     validate = function(info, value)
-                        local tnum
-                        tnum = tonumber(value)
-                        if not tnum or tnum < 0 then
-                            E:StaticPopup_Show('BadGoal', '', '')
-                            return false
-                        end
-                        return true
-                     end,
-                     order    = 30,
-                  },
-                  newline    = {
-                     type    = 'description',
-                     name    = '',
-                     order   = 39,
-                  },
-                  count3 = {
-                     type     = 'execute',
-                     name     = L['Count This Item'],
-                     func     = function() CopyPattern(curitem, p3); newButtonText(curitem.Item); end,
-                     order    = 40,
-                  },
-               },
-            },
-            item4group = {
-               type = 'group',
-               name = "Item 4",
-               order = 540,
-               args = {
-                  Item4 = {
-                     type      = 'input',
-                     name      = "Item",
-                     get       = function() return p4.Item end,
-                     set       = function(info, value)
-                        p4.Item = value
-                     end,
-                     order    = 10,
-                  },               
-                  Lock1 = {
-                     type     = 'toggle',
-                     name     = "Freeze",
-                     desc     = "Keep Item 4 from being overwritten",
-                     get      = function() return p4.frozen end,
-                     set      = function(info, value)
-                        p4.frozen = value
-                        newButtonText(curitem.Item)
-                     end,
-                     order     = 20,
-                  },
-                  Qty4 = {
-                     type     = 'input',
-                     name     = "Quantity",
-                     get      = function() return tostring(p4.Goal) end,
-                     set      = function(info, value)
-                        p4.Goal = tonumber(value)
-                     end,
-                     order    = 30,
-                     validate = function(info, value)
-                        local tnum
-                        tnum = tonumber(value)
-                        if not tnum or tnum < 0 then
-                            E:StaticPopup_Show('BadGoal', '', '')
-                            return false
-                        end
-                        return true
-                     end,
-                  },
-                  newline    = {
-                     type    = 'description',
-                     name    = '',
-                     order   = 39,
-                  },
-                  count4 = {
-                     type     = 'execute',
-                     name     = L['Count This Item'],
-                     func     = function() CopyPattern(curitem, p4); newButtonText(curitem.Item); end,
-                     order    = 40,
-                  },
-               },
-            },
-            item5group = {
-               type = 'group',
-               name = "Item 5",
-               order = 550,
-               args = {
-                  Item5 = {
-                     type      = 'input',
-                     name      = "Item",
-                     get       = function() return p5.Item end,
-                     set       = function(info, value)
-                        p5.Item = value
-                     end,
-                     order    = 10,
-                  },               
-                  Lock5 = {
-                     type     = 'toggle',
-                     name     = "Freeze",
-                     desc     = "Keep Item 5 from being overwritten",
-                     get      = function() return p5.frozen end,
-                     set      = function(info, value)
-                        p5.frozen = value
-                        newButtonText(curitem.Item)
-                     end,
-                     order     = 20,
-                  },
-                  Qty5 = {
-                     type     = 'input',
-                     name     = "Quantity",
-                     get      = function() return tostring(p5.Goal) end,
-                     set      = function(info, value)
-                        p5.Goal = tonumber(value)
-                     end,
-                     validate = function(info, value)
-                        local tnum
-                        tnum = tonumber(value)
-                        if not tnum or tnum < 0 then
-                            E:StaticPopup_Show('BadGoal', '', '')
-                            return false
-                        end
-                        return true
-                     end,
-                     order    = 30,
-                  },
-                  newline    = {
-                     type    = 'description',
-                     name    = '',
-                     order   = 39,
-                  },
-                  count5 = {
-                     type     = 'execute',
-                     name     = L['Count This Item'],
-                     func     = function() CopyPattern(curitem, p5); newButtonText(curitem.Item); end,
-                     order    = 40,
-                  },
-               },
-            },
-
-         },
-       }
-   end
-end
-
-
-local function LoadDialogs()
-   E.PopupDialogs['BadGoal'] = {
-      text = L["You must enter an integer zero or higher"],
-      button1 = OKAY,
-      hasEditBox = false,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      exclusive = true,
-   }
-   E.PopupDialogs['BadItem'] = {
-      text = L["You must enter an item that exists in your bags"],
-      button1 = OKAY,
-      hasEditBox = false,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      exclusive = true,
-   }
-   E.PopupDialogs['GetGoalQty'] = {
-      text = L["Enter the desired quantity."],
-      name = "dlgGetGoal",
-      button1 = OKAY,
-      button2 = CANCEL,
-      hasEditBox = true,
-      EditBoxOnEnterPressed = function(self)
-         GoalChanged(self:GetNumber())
-         newButtonText(curitem.Item)
-         self:GetParent():Hide();
-      end,
-      EditBoxOnEscapePressed = function(self)
-         self:GetParent():Hide();
-      end,
-      OnShow = function(self)
-         edBox = getglobal(self:GetName().."EditBox")
-         edBox:SetNumeric(true)
-         edBox:SetText(tostring(curitem.Goal));
-         edBox:HighlightText()
-      end,
-      OnAccept = function(self)
-         GoalChanged(edBox:GetNumber())
-         newButtonText(curitem.Item)
-      end,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      enterClicksFirstButton = true,
-      exclusive = true,
-   }
-   E.PopupDialogs['ConfirmReplace'] = {
-      text = L["New counted item %s will also replace the first unfrozen Item Pattern (%s). Is this what you want?"],
-      name = "dlgConfirmReplace",
-      button1 = YES,
-      button2 = NO,
-      hasEditBox = false,
-      OnShow = function(self)
-         PlaySound(137776, "SFX")
-      end,
-      OnAccept = function(self)
-         if not p1.frozen then CopyPattern(p1, curitem)
-         elseif not p2.frozen then CopyPattern(p2, curitem)
-         elseif not p3.frozen then CopyPattern(p3, curitem) 
-         elseif not p4.frozen then CopyPattern(p4, curitem) 
-         elseif not p5.frozen then CopyPattern(p5, curitem) 
-         end
-      end,
-      OnCancel = function(self)
-         --PlaySound(847, "SFX")
-      end,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      enterClicksFirstButton = true,
-      exclusive = true,
-   }
-   E.PopupDialogs['AllFrozen'] = {
-      text = L["All Item Patterns are frozen; %s will be Counted, but without being stored in an Item Pattern."],
-      name = "dlgAllFrozen",
-      sound = "Whisper",
-      button1 = OKAY,
-      hasEditBox = false,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      enterClicksFirstButton = true,
-      exclusive = true,
-   }
-   E.PopupDialogs['RecallingItem'] = {
-      text = L["Retrieving pattern for %s."],
-      button1 = OKAY,
-      hasEditBox = false,
-      timeout = 0,
-      whileDead = true,
-      preferredIndex = 3,
-      hideOnEscape = true,
-      exclusive = true,
-   }
+	return profiles
 end
 
 
 function InitDB()
-   db = ADB:New("ItemCountDB", defaults, true)
-   db.RegisterCallback(IC, "OnProfileChanged", "RefreshConfig")
-   db.RegisterCallback(IC, "OnProfileCopied", "RefreshConfig")
-   db.RegisterCallback(IC, "OnProfileReset", "RefreshConfig")
 
-   pf = db.profile
-   curitem = pf.curitem
-   p1 = pf.pattern1
-   p2 = pf.pattern2
-   p3 = pf.pattern3
-   p4 = pf.pattern4
-   p5 = pf.pattern5
-   
-end
+	db = ADB:New("ItemCountDB", defaults, true)
+	db.RegisterCallback(IC, "OnProfileChanged", "RefreshConfig")
+	db.RegisterCallback(IC, "OnProfileCopied", "RefreshConfig")
+	db.RegisterCallback(IC, "OnProfileReset", "RefreshConfig")
 
+	pf = db.profile
 
-function SetDefaults(obj)
-   shallowcopy(obj, defaults)
-   shallowcopy(obj.curitem, defaults.curitem)
-   shallowcopy(obj.pattern1, defaults.pattern1)
-   shallowcopy(obj.pattern2, defaults.pattern2)
-   shallowcopy(obj.pattern3, defaults.pattern3)
-   shallowcopy(obj.pattern4, defaults.pattern4)
-   shallowcopy(obj.pattern5, defaults.pattern5)
+	Count1 = pf.count1
+	Count2 = pf.count2
+	Count3 = pf.count3
+	Count4 = pf.count4
+	Count5 = pf.count5
+
 end
 
 
 function IC:RefreshConfig(event, database, newProfileKey)
-   -- would do some stuff here
-   if pf.Debug and AllowDebug then
-      print("Pattern Set changed to "..newProfileKey.." - Event = "..event)
-   end
+	-- would do some stuff here
+	if AllowDebug and pf.Debug then
+		print("Pattern Set changed to "..newProfileKey.." - Event = "..event)
+	end
+	pf = database.profile
 
-   pf = database.profile
+	if not pf.count1 then
+		SetDefaults(pf)
+	end
 
-   if not pf.Item then
-      SetDefaults(pf)
-   end
+end
 
-   curitem = pf.curitem
-   p1 = pf.pattern1
-   p2 = pf.pattern2
-   p3 = pf.pattern3
-   p4 = pf.pattern4
-   p5 = pf.pattern5
- 
-   newButtonText(curitem.Item)
+
+local function setItem(cObj, pItem)
+
+	cObj.item = pItem
+	Refresh(cObj)
+	print(C_YELLOW.."Item Count: "..C_WHITE.." Item for Counter #"..tostring(cObj.index)
+		.. " set to " .. pItem)
+	newButtonText()
+
+end
+
+
+local function ConfigIsActive()
+
+	return false
 
 end
 
 
 function IC:ContainerFrameItemButton_OnModifiedClick(...)
-   -- Alt-Right-Click
-   local newItem
+	-- Alt-Right-Click
+	local newItem
 
-   if select(2,...) == "RightButton" and IsAltKeyDown() and 
-   not IsControlKeyDown() and not IsShiftKeyDown() and 
-   not CursorHasItem() then
+	if AllowDebug and pf.Debug then
+		print("OnModifiedClick(): AltKey="..YesNo(IsAltKeyDown()))
+	end
+	
+	if ConfigIsActive() then return 0 end
 
-      bagID, slot = (...):GetParent():GetID(), (...):GetID()
-      texture, itemCount, locked, quality, readable, lootable, itemLink = 
-         GetContainerItemInfo(bagID, slot);
+	if select(2,...) == "RightButton" and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
 
-      newItem = tostring(itemLink)
-      if newItem == curitem.Item then 
-         return -- no need to do anything
-      end
+		bagID, slot = (...):GetParent():GetID(), (...):GetID()
+		texture, itemCount, locked, quality, readable, lootable, itemLink = 
+			GetContainerItemInfo(bagID, slot);
 
-      ItemChanged(newItem)
-      --curitem.Item = newItem
+		newItem = tostring(itemLink)
 
-      QoH = itemCount --GetItemCount(itemLink)
-      AlreadyAlerted = (tonumber(curitem.Goal) <= QoH)
-      newButtonText(curitem.Item)
+		if AllowDebug and pf.Debug then
+			print("newItem: "..newItem)
+		end
 
-      if not pf.Silent then
-         print(C_AQUA.. L["ElvUI ItemCount"]..":" .. C_YELLOW.. L[" now counting "] .. curitem.Item)
-         print(C_AQUA.. L["ElvUI ItemCount"]..":" .. C_YELLOW.. L[" current qty "] ..C_WHITE.. tostring(QoH))
-      end
+		if Count1.item == newItem or Count2.item == newItem or Count3.item == newItem
+		or Count4.item == newItem or Count5.item == newItem then
+--			print("Item Count ERROR: You are already counting "..newItem)
+			E:StaticPopup_Show('AlreadyCounting', '', '')
+			return
+		end
 
-   end
+		if Count1.frozen == false then setItem(Count1, newItem)
+		elseif Count2.frozen == false then setItem(Count2, newItem)
+		elseif Count3.frozen == false then setItem(Count3, newItem)
+		elseif Count4.frozen == false then setItem(Count4, newItem)
+		elseif Count5.frozen == false then setItem(Count5, newItem)
+		else
+			E:StaticPopup_Show('AllFrozen', '', '')
+		end
+
+	end
+
+	if select(2,...) == "RightButton" and IsControlKeyDown() and not IsAltKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
+		newButtonText()
+	end
+
+
+end
+
+
+function SetDefaults(obj)
+
+	shallowcopy(obj, defaults)
+	shallowcopy(obj.count1, defaults.count1)
+	shallowcopy(obj.count2, defaults.count2)
+	shallowcopy(obj.count3, defaults.count3)
+	shallowcopy(obj.count4, defaults.count4)
+	shallowcopy(obj.count5, defaults.count5)
+
+end
+
+
+local function MakeMenu()
+	local tt = {}
+	menu = wipe(menu)
+
+	Refresh(Count1, false)
+	Refresh(Count2, false)
+	Refresh(Count3, false)
+	Refresh(Count4, false)
+	Refresh(Count5, false)
+
+	local debugmenu = ""
+	if AllowDebug then
+		debugmenu = { text = C_GREEN..L["Debug"], checked = pf.Debug, isNotRadio = true, 
+			keepShownOnClick = false,
+			func = function() 
+				checked = not checked
+				pf.Debug = checked
+			end, }
+	end
+	menu = {
+		{ text = L["Item Count Options"], colorCode = C_YELLOW, isTitle = true, 
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+
+		debugmenu,
+
+		{ text = L["--- Item List ---"], isTitle = 0, 
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+		{ text = L["Checked = Frozen"], isTitle = 0,
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+		{ text = L["Left-click to freeze/unfreeze"], isTitle = 0,
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+
+		{ text = Count1.item.." - "..tostring(Count1.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count1.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count1.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count1.item, tostring(Count1.Goal), Count1)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 1), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 1; checked = true; --debugSay("Counting 1");
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 1");
+			end, },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count2.item.." - "..tostring(Count2.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count2.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count2.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count2.item, tostring(Count2.Goal), Count2)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 2), hasArrow = false, keepShownOnClick = true,
+			leftPadding = 12, 
+			func = function()
+				pf.watched = 2; checked = true; --debugSay("Counting 2"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 2");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count3.item.." - "..tostring(Count3.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count3.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count3.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count3.item, tostring(Count3.Goal), Count3)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 3), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 3; checked = true; --debugSay("Counting 3"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 3");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count4.item.." - "..tostring(Count4.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count4.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count4.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count4.item, tostring(Count4.Goal), Count4)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 4), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 4; checked = true; --debugSay("Counting 4"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 4");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count5.item.." - "..tostring(Count5.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count5.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count5.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count5.item, tostring(Count5.Goal), Count5)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 5), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 5; checked = true; --debugSay("Counting 5");
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 5");
+			end },
+
+
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+		{ text = L["Close"], isNotRadio = true, notCheckable = true, colorCode = C_YELLOW,
+			tooltipTitle = " ",
+			tooltipText = L["Click here to close menu"], keepShownOnClick = false, 
+			justifyH = "CENTER", },
+
+	}
+
+end
+
+
+function LoadDialogs()
+
+	E.PopupDialogs['BadGoal'] = {
+		text = L["You must enter an integer zero or higher"],
+		button1 = OKAY,
+		hasEditBox = false,
+		sound = 137776,
+		timeout = 1,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true,
+	}
+
+	E.PopupDialogs['AllFrozen'] = {
+		text = "Item Count ERROR: there are no unfrozen Count slots",
+		button1 = OKAY,
+		hasEditBox = false,
+		sound = 137776,
+		timeout = 4,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true,
+	}
+
+	E.PopupDialogs['AlreadyCounting'] = {
+		text = "Item Count ERROR: you are already counting that item",
+		button1 = OKAY,
+		sound = 137776,
+		hasEditBox = false,
+		timeout = 4,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true,
+	}
+
+	E.PopupDialogs['NowCounting'] = {
+		text = C_YELLOW.."Item Count: now counting %s in slot #%s",
+		button1 = OKAY,
+		button2 = CANCEL,
+		hasEditBox = false,
+		sound = 137776,
+		timeout = 4,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true
+	}
+
+	E.PopupDialogs['BadItem'] = {
+		text = L["You must enter an item that exists in your bags"],
+		button1 = OKAY,
+		hasEditBox = false,
+		timeout = 0,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		exclusive = true,
+	}
+
+	E.PopupDialogs['GetGoalQty'] = {
+		text = "Enter the desired goal quantity for %s",
+		name = "dlgGetGoal",
+		sound = 137776,
+		button1 = OKAY,
+		button2 = CANCEL,
+		hasEditBox = true,
+		EditBoxOnEscapePressed = function(self)
+		   self:GetParent():Hide()
+		end,
+		OnShow = function(self)
+		   edBox = getglobal(self:GetName().."EditBox")
+		   edBox:SetNumeric(true)
+		   edBox:SetText(tostring(self.data.Goal))
+		   edBox:HighlightText()
+		end,
+		enterClicksFirstButton = true,
+		OnAccept = function(self)
+		   self.data.Goal = edBox:GetNumber()
+		   newButtonText()
+		end,
+		timeout = 0,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true,
+	}
+end
+
+
+local function Click(IC, btn)
+-- OPEN Configuration Dialog
+
+	DT.tooltip:Hide()
+	if btn == "RightButton" then
+		MakeMenu()
+		EasyMenu(menu, menuFrame, "cursor", -10, -10, "MENU")
+
+	elseif IsControlKeyDown() then
+		newButtonText()
+
+	else
+		Open_IC_Options()
+
+	end
+
 end
 
 
 function IC:OnInitialize()
-   if E.db.general.loginmessage then
-      print(C_WHITE.."Loading "..C_BLUE..IC:GetName()..C_WHITE.." version "..Version)
-   end
 
-   --set up Alert Bell arrays for convenience
-   for k,v in pairs(Bells) do
-      BellsLabel[ix] = k
-      BellsIndex[k] = ix
-      ix = ix + 1
-   end
+	self.initialized = true
 
-   LoadDialogs()
-   RunBefore = false  -- need to reset QoH
+	if E.db.general.loginmessage then
+		E:Delay(1, function () 
+			print(C_WHITE.."Loading "..C_BLUE..IC:GetName()..C_WHITE.." version "..Version)
+		end)
+	end
 
-   ctLoaded, ctFinished = IsAddOnLoaded("Blizzard_CombatText")
-   if not ctLoaded then
-     --print(C_AQUA..L["ElvUI ItemCount"]..": " ..C_YELLOW.. "Loading Blizzard_CombatText")
-     UIParentLoadAddOn("Blizzard_CombatText")
-   end
+	if not pf then
+		pf = defaults.profile
+		InitDB()
+	end
+
+	--set up Alert Bell arrays for convenience
+	for k,v in pairs(Bells) do
+		BellsLabel[ix] = k
+		BellsIndex[k] = ix
+		ix = ix + 1
+	end
+
+	LoadDialogs(IC)
+
+	Refresh(Count1, false)
+	Refresh(Count2, false)
+	Refresh(Count3, false)
+	Refresh(Count4, false)
+	Refresh(Count5, false)
+
+	ctLoaded, ctFinished = IsAddOnLoaded("Blizzard_CombatText")
+	if not ctLoaded then
+		UIParentLoadAddOn("Blizzard_CombatText")
+	end
 
 end
 
 
 function IC:OnEnable()
-   self:Hook("ContainerFrameItemButton_OnModifiedClick", true)
+	-- Usage: Hook([object], method, [handler], [hookSecure])
+	self:Hook("ContainerFrameItemButton_OnModifiedClick", true)
+end
+
+
+function ADB:OnEnable()
+	print("ADB Enabled")
 end
 
 
 function Slash_IC(msg, editbox)
-   Open_IC_Options()
+	Open_IC_Options()
 end
 SLASH_IC1 = "/ic"
 SLASH_IC2 = "/itemcount"
@@ -1338,29 +807,616 @@ SlashCmdList['IC'] = Slash_IC
 
 -- this is here so that the datatext button display will refresh
 local function ValueColorUpdate(hex, r, g, b)   
-   displayString = join("", hex, "%s|r")
-   hexColor = hex
-   if lastPanel ~= nil then
-      OnEvent(lastPanel)
-   end
+	displayString = join("", hex, "%s|r")
+	hexColor = hex
+	if lastPanel then OnEvent(lastPanel) end
 end
 E['valueColorUpdateFuncs'][ValueColorUpdate] = true
 
--- has to use '...' to avoid elvui_config version nil error.  No idea why this is so
+
+function InjectOptions()
+
+	if not pf then
+		pf = defaults.profile
+		InitDB()
+	end
+
+	local db_version = "alpha"
+	if db.global.db_version then
+		db_version = db.global.db_version
+	end
+
+	if not E.Options.args.itemcount then
+		E.Options.args.itemcount = {
+			order	= -2,
+			type	= 'group',
+			name	= 'Item Count',
+			args	= {
+				header = {
+					type	= "header",
+					name	= L["ItemCount"] .. C_GREEN ..' ' .. Version,
+					order	= 20,
+				},
+				space0 = {
+					type	= 'description',
+					name	= "   ItemCount Database Version " .. db.global.db_version,
+					order	= 40,
+				},
+				header2b = {
+					type	= "header",
+					name	= " [    General Options    ] ",
+					order	= 50,
+				},
+				Debug = {
+					type	= 'toggle',
+					name	= L["Debug"],
+					desc	= L["Print Debug messages"],
+					get		= function() return pf.Debug end,
+					set		= function(info, value)
+						pf.Debug= value
+					end,
+					hidden	= not AllowDebug,
+					order	= 90,
+				},
+
+		-- PATTERN SETS (profiles)
+				header2 = {
+					type	= 'header',
+					name	= " [   Pattern Sets   ] ",
+					order	= 300,
+				},
+				space5 = {
+					type	= 'description',
+					name	= "",
+					order	= 310,
+				},
+				selectprofile = {
+					name	= L["Select Pattern Set"],
+					type	= "select",
+					get		= function() return db:GetCurrentProfile() end,
+					set		= function(info, value) db:SetProfile(value) end,
+					values	= function() return getProfileList(db, false)   end,
+					order	= 320,
+				},
+				copyprofile = {
+					type	= 'select',
+					style	= 'dropdown',
+					desc	= L["This only copies ItemCount Pattern Sets, never any ElvUI configuration"],
+					name	= L["Copy Pattern Set"],
+					get		= function() return false end,
+					set		= function(info, value) db:CopyProfile(value) end,
+					values	= function() return getProfileList(db, true) end,
+					order	= 340,
+				},
+				space6 = {
+					type	= 'description',
+					name	= "",
+					order	= 350,
+				},
+				newprofile = {
+					type	= 'input',
+					name	= L["New Pattern Set"],
+					get		= function() return false end,
+					set		= function(info, value) db:SetProfile(value) end,
+					order	= 360,
+				},
+				rmprofile = {
+					type	= 'select',
+					style	= 'dropdown',
+					name	= L["Delete Pattern Set"],
+					get		= function() return false end,
+					set		= function(info, value) db:DeleteProfile(value) end,
+					values	= function() return getProfileList(db, true) end,
+					confirm	= true,
+					confirmText= L["Are you sure you want to delete the selected pattern set?"],
+					order	= 370,
+				},
+
+				-- ITEM LIST
+				header3 = {
+					type	= 'header',
+					name	= " [   Counted Items   ] ",
+					order	= 500,
+				},
+						
+
+				-- ***********************   ITEM 1   ***************************
+				item1group = {
+					type	= 'group',
+					name	= "Item 1",
+					order	= 1100,
+					args	= {
+						item1 = {
+							type	= 'input',
+							name	= "Item",
+							desc	= "Item to be counted",
+							get		= function() return Count1.item end,
+							set		= function(info, value)
+								Count1.item = value
+								newButtonText()
+							end,
+							order	= 1110,
+						},			
+						froz1 = {
+							type	= 'toggle',
+							name	= "Frozen",
+							desc	= "Keep Item 1 from being overwritten",
+							get		= function() return Count1.frozen end,
+							set		= function(info, value)
+								Count1.frozen = value
+							end,
+							order	= 1120,
+						},
+						goal1 = {
+							type	= 'input',
+							name	= "QoH",
+							desc	= "Qty on Hand",
+							get		= function() return tostring(Count1.Goal) end,
+							set		= function(info, value)
+								Count1.Goal = tonumber(value)
+							end,
+							validate	= function(info, value)
+								local tnum
+								tnum = tonumber(value)
+								if not tnum or tnum < 0 then
+									 E:StaticPopup_Show('BadGoal', '', '')
+									 return false
+								end
+								return true
+							end,
+							order	= 1130,
+						},
+						newline1 = {
+							type	= 'description',
+							name	= '',
+							order	= 1140,
+						},
+						silent1		= {
+							type	= 'toggle',
+							name	= "Silent",
+							desc	= L['Announce goal met for this item'],
+							get		= function() return Count1.Silent end,
+							set		= function(info, value)
+								Count1.Silent = value
+							end,
+							order	= 1160,
+						},
+						chime1		= {
+							type	= 'toggle',
+							name	= "Chime",
+							desc	= L['Chime on collection for this item'],
+							get		= function() return Count1.Chime end,
+							set		= function(info, value)
+								Count1.Chime = value
+							end,
+							order	= 1170,
+						},
+						bellsound1 = {
+							type	= 'select',
+							name	= L["Alert Sound for meeting this goal"],
+							style	= "dropdown",
+							values	= BellsLabel,
+							get		= function() return BellsIndex[Count1.BellSound] end,
+							set		= function(info, value)
+								Count1.BellSound = BellsLabel[value]
+								PlaySound(Bells[BellsLabel[value]], "SFX")
+							end,
+							order	= 1180,
+						},
+						watch1 = {
+							type	= 'execute',
+							name	= L['Watch This Item'],
+							func	= function() 
+								pf.watched = 1
+								newButtonText()
+							end,
+							order	= 1190,
+						}, 
+					},
+				},
+
+
+				-- ***********************   ITEM 2   ***************************
+				item2group = {
+					type	= 'group',
+					name	= "Item 2",
+					order	= 1200,
+					args	= {
+						item2 = {
+							type	= 'input',
+							name	= "Item",
+							desc	= "Item to be counted",
+							get		= function() return Count2.item end,
+							set		= function(info, value)
+								Count2.item = value
+								newButtonText()
+							end,
+							order	= 1210,
+						},			
+						froz2 = {
+							type	= 'toggle',
+							name	= "Frozen",
+							desc	= "Keep Item 2 from being overwritten",
+							get		= function() return Count2.frozen end,
+							set		= function(info, value)
+								Count2.frozen = value
+							end,
+							order	= 1220,
+						},
+						goal2 = {
+							type	= 'input',
+							name	= "QoH",
+							desc	= "Qty on Hand",
+							get		= function() return tostring(Count2.Goal) end,
+							set		= function(info, value)
+								Count2.Goal = tonumber(value)
+							end,
+							validate	= function(info, value)
+								local tnum
+								tnum = tonumber(value)
+								if not tnum or tnum < 0 then
+									 E:StaticPopup_Show('BadGoal', '', '')
+									 return false
+								end
+								return true
+							end,
+							order	= 1230,
+						},
+						newline2 = {
+							type	= 'description',
+							name	= '',
+							order	= 1240,
+						},
+						silent2 = {
+							type	= 'toggle',
+							name	= "Silent",
+							desc	= L['Announce goal met for this item'],
+							get		= function() return Count2.Silent end,
+							set		= function(info, value)
+								Count2.Silent = value
+							end,
+							order	= 1260,
+						},
+						chime2 = {
+							type	= 'toggle',
+							name	= "Chime",
+							desc	= L['Chime on collection for this item'],
+							get		= function() return Count2.Chime end,
+							set		= function(info, value)
+								Count2.Chime = value
+							end,
+							order	= 1270,
+						},
+						bellsound2 = {
+							type	= 'select',
+							name	= L["Alert Sound for meeting this goal"],
+							style	= "dropdown",
+							values	= BellsLabel,
+							get		= function() return BellsIndex[Count2.BellSound] end,
+							set		= function(info, value)
+								Count2.BellSound = BellsLabel[value]
+								PlaySound(Bells[BellsLabel[value]], "SFX")
+							end,
+							order	= 1280,
+						},
+						watch2 = {
+							type	= 'execute',
+							name	= L['Watch This Item'],
+							func	= function() 
+								pf.watched = 2
+								newButtonText()
+							end,
+							order	= 1290,
+						},
+					},
+				},
+
+
+				-- ***********************   ITEM 3   ***************************
+				item3group = {
+					type	= 'group',
+					name	= "Item 3",
+					order	= 1300,
+					args	= {
+						item3 = {
+							type	= 'input',
+							name	= "Item",
+							desc	= "Item to be counted",
+							get		= function() return Count3.item end,
+							set		= function(info, value)
+								Count3.item = value
+								newButtonText()
+							end,
+							order	= 1310,
+						},			
+						froz3 = {
+							type	= 'toggle',
+							name	= "Frozen",
+							desc	= "Keep Item 3 from being overwritten",
+							get		= function() return Count3.frozen end,
+							set		= function(info, value)
+								Count3.frozen = value
+							end,
+							order	= 1320,
+						},
+						goal3 = {
+							type	= 'input',
+							name	= "QoH",
+							desc	= "Qty on Hand",
+							get		= function() return tostring(Count3.Goal) end,
+							set		= function(info, value)
+								Count3.Goal = tonumber(value)
+							end,
+							validate	= function(info, value)
+								local tnum
+								tnum = tonumber(value)
+								if not tnum or tnum < 0 then
+									 E:StaticPopup_Show('BadGoal', '', '')
+									 return false
+								end
+								return true
+							end,
+							order	= 1330,
+						},
+						newline3 = {
+							type	= 'description',
+							name	= '',
+							order	= 1340,
+						},
+						silent3 = {
+							type	= 'toggle',
+							name	= "Silent",
+							desc	= L['Announce goal met for this item'],
+							get		= function() return Count3.Silent end,
+							set		= function(info, value)
+								Count3.Silent = value
+							end,
+							order	= 1360,
+						},
+						chime3 = {
+							type	= 'toggle',
+							name	= "Chime",
+							desc	= L['Chime on collection for this item'],
+							get		= function() return Count3.Chime end,
+							set		= function(info, value)
+								Count3.Chime = value
+							end,
+							order	= 1370,
+						},
+						bellsound3 = {
+							type	= 'select',
+							name	= L["Alert Sound for meeting this goal"],
+							style	= "dropdown",
+							values	= BellsLabel,
+							get		= function() return BellsIndex[Count3.BellSound] end,
+							set		= function(info, value)
+								Count3.BellSound = BellsLabel[value]
+								PlaySound(Bells[BellsLabel[value]], "SFX")
+							end,
+							order	= 1380,
+						},
+						watch3 = {
+							type	= 'execute',
+							name	= L['Watch This Item'],
+							func	= function() 
+								pf.watched = 3
+								newButtonText()
+							end,
+							order	= 1390,
+						},
+					},
+				},
+
+
+				-- ***********************   ITEM 4   ***************************
+				item4group = {
+					type	= 'group',
+					name	= "Item 4",
+					order	= 1400,
+					args	= {
+						item4 = {
+							type	= 'input',
+							name	= "Item",
+							desc	= "Item to be counted",
+							get		= function() return Count4.item end,
+							set		= function(info, value)
+								Count4.item = value
+								newButtonText()
+							end,
+							order	= 1410,
+						},			
+						froz4 = {
+							type	= 'toggle',
+							name	= "Frozen",
+							desc	= "Keep Item 4 from being overwritten",
+							get		= function() return Count4.frozen end,
+							set		= function(info, value)
+								Count4.frozen = value
+							end,
+							order	= 1420,
+						},
+						goal4 = {
+							type	= 'input',
+							name	= "QoH",
+							desc	= "Qty on Hand",
+							get		= function() return tostring(Count4.Goal) end,
+							set		= function(info, value)
+								Count4.Goal = tonumber(value)
+							end,
+							validate	= function(info, value)
+								local tnum
+								tnum = tonumber(value)
+								if not tnum or tnum < 0 then
+									 E:StaticPopup_Show('BadGoal', '', '')
+									 return false
+								end
+								return true
+							end,
+							order	= 1430,
+						},
+						newline4 = {
+							type	= 'description',
+							name	= '',
+							order	= 1440,
+						},
+						silent4 = {
+							type	= 'toggle',
+							name	= "Silent",
+							desc	= L['Announce goal met for this item'],
+							get		= function() return Count4.Silent end,
+							set		= function(info, value)
+								Count4.Silent = value
+							end,
+							order	= 1460,
+						},
+						chime4 = {
+							type	= 'toggle',
+							name	= "Chime",
+							desc	= L['Chime on collection for this item'],
+							get		= function() return Count4.Chime end,
+							set		= function(info, value)
+								Count4.Chime = value
+							end,
+							order	= 1470,
+						},
+						bellsound4 = {
+							type	= 'select',
+							name	= L["Alert Sound for meeting this goal"],
+							style	= "dropdown",
+							values	= BellsLabel,
+							get		= function() return BellsIndex[Count4.BellSound] end,
+							set		= function(info, value)
+								Count4.BellSound = BellsLabel[value]
+								PlaySound(Bells[BellsLabel[value]], "SFX")
+							end,
+							order	= 1480,
+						},
+						watch4 = {
+							type	= 'execute',
+							name	= L['Watch This Item'],
+							func	= function() 
+								pf.watched = 4
+								newButtonText()
+							end,
+							order	= 1490,
+						},
+					},
+				},
+
+
+				-- ***********************   ITEM 5   ***************************
+				item5group = {
+					type	= 'group',
+					name	= "Item 5",
+					order	= 1500,
+					args	= {
+						item1 = {
+							type	= 'input',
+							name	= "Item",
+							desc	= "Item to be counted",
+							get		= function() return Count5.item end,
+							set		= function(info, value)
+								Count5.item = value
+								newButtonText()
+							end,
+							order	= 1510,
+						},			
+						froz5 = {
+							type	= 'toggle',
+							name	= "Frozen",
+							desc	= "Keep Item 5 from being overwritten",
+							get		= function() return Count5.frozen end,
+							set		= function(info, value)
+								Count5.frozen = value
+							end,
+							order	= 1520,
+						},
+						goal5 = {
+							type	= 'input',
+							name	= "QoH",
+							desc	= "Qty on Hand",
+							get		= function() return tostring(Count5.Goal) end,
+							set		= function(info, value)
+								Count5.Goal = tonumber(value)
+							end,
+							validate	= function(info, value)
+								local tnum
+								tnum = tonumber(value)
+								if not tnum or tnum < 0 then
+									 E:StaticPopup_Show('BadGoal', '', '')
+									 return false
+								end
+								return true
+							end,
+							order	= 1530,
+						},
+						newline5 = {
+							type	= 'description',
+							name	= '',
+							order	= 1540,
+						},
+						silent5		= {
+							type	= 'toggle',
+							name	= "Silent",
+							desc	= L['Announce goal met for this item'],
+							get		= function() return Count5.Silent end,
+							set		= function(info, value)
+								Count5.Silent = value
+							end,
+							order	= 1560,
+						},
+						chime5		= {
+							type	= 'toggle',
+							name	= "Chime",
+							desc	= L['Chime on collection for this item'],
+							get		= function() return Count5.Chime end,
+							set		= function(info, value)
+								Count5.Chime = value
+							end,
+							order	= 1570,
+						},
+						bellsound5 = {
+							type	= 'select',
+							name	= L["Alert Sound for meeting this goal"],
+							style	= "dropdown",
+							values	= BellsLabel,
+							get		= function() return BellsIndex[Count5.BellSound] end,
+							set		= function(info, value)
+								Count5.BellSound = BellsLabel[value]
+								PlaySound(Bells[BellsLabel[value]], "SFX")
+							end,
+							order	= 1580,
+						},
+						watch5 = {
+							type	= 'execute',
+							name	= L['Watch This Item'],
+							func	= function() 
+								pf.watched = 5
+								newButtonText()
+							end,
+							order	= 1590,
+						},
+
+					},
+				},
+			},
+		 }
+	end
+
+end
 EP:RegisterPlugin(..., InjectOptions)
 
 --[[
-   DT:RegisterDatatext(name, something, events, eventFunc, updateFunc, clickFunc, onEnterFunc, onLeaveFunc)
+	DT:RegisterDatatext(name, category, events, eventFunc, updateFunc, clickFunc, onEnterFunc, onLeaveFunc, localizedName, objectEvent, colorUpdate)	
 
-   name - name of the datatext (required)
-   something - new argument required by ElvUI now
-   events - must be a table with string values of event names to register 
-   eventFunc - function that gets fired when an event gets triggered
-   updateFunc - onUpdate script target function
-   click - function to fire when clicking the datatext
-   onEnterFunc - function to fire OnEnter
-   onLeaveFunc - function to fire OnLeave, if not provided one will be set for you that hides the tooltip.
+	name - name of the datatext (required)
+	category - menu category
+	events - must be a table with string values of event names to register 
+	eventFunc - function that gets fired when an event gets triggered
+	updateFunc - onUpdate script target function
+	click - function to fire when clicking the datatext
+	onEnterFunc - function to fire OnEnter
+	onLeaveFunc - function to fire OnLeave, if not provided one will be set for you that hides the tooltip.
 ]]--
-DT:RegisterDatatext('ItemCount', nil, {"PLAYER_ENTERING_WORLD","BAG_UPDATE"}, OnEvent, OnUpdate, Click, OnEnter, OnLeave)
---E:RegisterModule('ItemCount')
 
+DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, Click, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
