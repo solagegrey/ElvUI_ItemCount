@@ -7,11 +7,11 @@ local AllowDebug = true
 						Solage of Greymane
 
 						v2.0
+					
+					To Do:
+					
+					- don't allow Alt-Right-Click feature while config is open
 
-		to do:
-
-		convert 'print' to dialog
-		add Freeze, Watch to menu
 
 
 ]]--
@@ -31,6 +31,8 @@ local IsAddonLoaded = IsAddonLoaded
 IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
 
 --------------- VARIABLES ------------------
+local newButtonText = function() end
+
 
 local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
 
@@ -55,6 +57,7 @@ local Count5 = {}
 
 local self = IC
 local okToAlert = false
+local NewGoal
 
 --------------- OBJECTS ------------------
 
@@ -161,13 +164,23 @@ Bells = {
 
 --------------- FUNCTIONS ------------------
 
-function IC:ShowDataText()
 
-	if AllowDebug and pf.Debug then
-		print (C_AQUA.."ShowDataText()"..C_WHITE)
+local function getText(cObj)
+	-- DataText display
+
+	local DataText
+
+	local countcolor = C_WHITE  -- default white
+	local alertcolor = C_MGNTA  -- alert redviolet?
+
+	if not cObj.item then return "Item Count" end
+
+	if cObj.Goal and tonumber(cObj.Goal) > 0 then
+		countcolor = alertcolor
 	end
+	DataText = countcolor ..string.format(" %.0f ", cObj.QoH) .."|r" .." " ..cObj.item
 
-	newButtonText()
+	return DataText
 
 end
 
@@ -178,6 +191,8 @@ local function Refresh(cObj, pAlert)
 	if not pAlert then pAlert = false; end
 
 	local NewQuantity
+	local newText
+
 	if cObj.QoH == nil then
 		cObj.QoH = 0
 		pAlert = false
@@ -189,10 +204,8 @@ local function Refresh(cObj, pAlert)
 
 	if pAlert and DeltaQ > 0 then -- INCREASED
 
-		if AllowDebug and pf.Debug then
-			print("Alerting/Chiming - NewQuantity = " .. tonumber(NewQuantity) ..", Goal = " 
-				.. tonumber(cObj.Goal) ..", already Alerted = " .. YesNo(cObj.Alerted))
-		end
+		debugSay("Alerting/Chiming - NewQuantity = " .. tonumber(NewQuantity) ..", Goal = " 
+			.. tonumber(cObj.Goal) ..", already Alerted = " .. YesNo(cObj.Alerted))
 
 		if cObj.QoH < cObj.Goal and NewQuantity >= cObj.Goal then
 			if cObj.Alerted == false then
@@ -210,7 +223,8 @@ local function Refresh(cObj, pAlert)
 			-- play Chime, Show Got Qty Text
 			cTxt = "+" ..tostring(DeltaQ) .." ".. cObj.item
 			if cObj.Chime then PlaySound(ChimeSound,"SFX"); end
-			CombatText_AddMessage(cTxt, CombatText_StandardScroll, 0.9, 0.2, 0.5, "sticky", true)
+			CombatText_AddMessage(cTxt, CombatText_StandardScroll, 2, 2, 1, "sticky", true)
+			--0.9, 0.2, 0.5, "sticky", true)
 			print(C_YELLOW .. cTxt ..C_WHITE)
 		end
 	elseif DeltaQ < 0 and cObj.QoH > NewQuantity then
@@ -219,110 +233,6 @@ local function Refresh(cObj, pAlert)
 	end
 
 	cObj.QoH = NewQuantity
-
-end
-
-
-local function countMenu(cObj)
-
-	local tstr = {
-		text = cObj.item.." - "..tostring(cObj.Goal), colorCode = C_YELLOW,
-		isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-		checked = cObj.frozen, keepShownOnClick = true,
-		func = function() checked = not checked; cObj.frozen = checked; end,
-	}
-
-	return tstr
-
-end
-
-
-local function getText(cObj)
-	-- DataText display
-
-	local DataText
-
-	local countcolor = C_WHITE  -- default white
-	local alertcolor = C_MGNTA  -- alert redviolet?
-
-	if not cObj.item then return "Item Count" end
-
-	if cObj.Goal and tonumber(cObj.Goal) > 0 then
-		countcolor = alertcolor
-	end
-	DataText = countcolor..string.format(" %.0f ", cObj.QoH).."|r"
-	DataText = DataText.." "..cObj.item
-
-	return DataText
-
-end
-
-
-local function MakeMenu()
-	local tt = {}
-	menu = wipe(menu)
-
-	Refresh(Count1, false)
-	Refresh(Count2, false)
-	Refresh(Count3, false)
-	Refresh(Count4, false)
-	Refresh(Count5, false)
-
-	local debugmenu = ""
-	if AllowDebug then
-		debugmenu = { text = C_GREEN..L["Debug"], checked = pf.Debug, isNotRadio = true, 
-			keepShownOnClick = false,
-			func = function() 
-				  checked = not checked
-				pf.Debug = checked
-			end, }
-	end
-	menu = {
-		{ text = L["Item Count Options"], colorCode = C_YELLOW, isTitle = true, 
-			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-
-		debugmenu,
-
-		{ text = L["--- Item List ---"], isTitle = 0, 
-			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-		{ text = L["Checked = Frozen"], isTitle = 0,
-			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-		{ text = L["Left-click to freeze/unfreeze"], isTitle = 0,
-			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
-
-		{ text = Count1.item.." - "..tostring(Count1.Goal), colorCode = C_YELLOW,
-			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-			checked = Count1.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count1.frozen = checked; end,
-		},
-		{ text = Count2.item.." - "..tostring(Count2.Goal), colorCode = C_YELLOW,
-			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-			checked = Count2.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count2.frozen = checked; end,
-		},
-		{ text = Count3.item.." - "..tostring(Count3.Goal), colorCode = C_YELLOW,
-			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-			checked = Count3.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count3.frozen = checked; end,
-		},
-		{ text = Count4.item.." - "..tostring(Count4.Goal), colorCode = C_YELLOW,
-			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-			checked = Count4.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count4.frozen = checked; end,
-		},
-		{ text = Count5.item.." - "..tostring(Count5.Goal), colorCode = C_YELLOW,
-			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = false,
-			checked = Count5.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count5.frozen = checked; end,
-		},
-
-		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
-		{ text = L["Close"], isNotRadio = true, notCheckable = true, colorCode = C_YELLOW,
-			tooltipTitle = " ",
-			tooltipText = L["Click here to close menu"], keepShownOnClick = false, 
-			justifyH = "CENTER", },
-
-	}
 
 end
 
@@ -338,9 +248,7 @@ local function OnEvent(self, event, ...)
 	end
 
 	if event == "BAG_UPDATE_DELAYED" then
-		if AllowDebug and pf.Debug then
-			print(C_YELLOW.."Refresh - OnEvent("..YesNo(okToAlert)..")")
-		end
+		debugSay(C_YELLOW.."Refresh - OnEvent("..YesNo(okToAlert)..")")
 
 		-- true = Alert or Chime if appropriate
 		Refresh(Count1, okToAlert)
@@ -369,7 +277,7 @@ end
 
 local function newButtonText()
 
-	print(C_YELLOW.."Refresh - newButtonText()")
+	debugSay("Refresh - newButtonText()")
 
 	Refresh(Count1, false)
 	Refresh(Count2, false)
@@ -452,22 +360,6 @@ local function Open_IC_Options()
 end
 
 
-local function Click(IC, btn)
--- OPEN Configuration Dialog
-
-	DT.tooltip:Hide()
-	if btn == "RightButton" then
-
-		MakeMenu()
-		EasyMenu(menu, menuFrame, "cursor", -10, -10, "MENU")
-
-	else
-		Open_IC_Options()
-	end
-
-end
-
-
 local function getProfileList(db, nocurrent)
 	-- clear old profile table
 	local profiles = {}
@@ -525,6 +417,13 @@ local function setItem(cObj, pItem)
 end
 
 
+local function ConfigIsActive()
+
+	return false
+
+end
+
+
 function IC:ContainerFrameItemButton_OnModifiedClick(...)
 	-- Alt-Right-Click
 	local newItem
@@ -532,8 +431,10 @@ function IC:ContainerFrameItemButton_OnModifiedClick(...)
 	if AllowDebug and pf.Debug then
 		print("OnModifiedClick(): AltKey="..YesNo(IsAltKeyDown()))
 	end
+	
+	if ConfigIsActive() then return 0 end
 
-	if select(2,...) == "RightButton" and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown() and not CursorHasItem() then
+	if select(2,...) == "RightButton" and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
 
 		bagID, slot = (...):GetParent():GetID(), (...):GetID()
 		texture, itemCount, locked, quality, readable, lootable, itemLink = 
@@ -563,6 +464,11 @@ function IC:ContainerFrameItemButton_OnModifiedClick(...)
 
 	end
 
+	if select(2,...) == "RightButton" and IsControlKeyDown() and not IsAltKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
+		newButtonText()
+	end
+
+
 end
 
 
@@ -578,19 +484,166 @@ function SetDefaults(obj)
 end
 
 
+local function MakeMenu()
+	local tt = {}
+	menu = wipe(menu)
+
+	Refresh(Count1, false)
+	Refresh(Count2, false)
+	Refresh(Count3, false)
+	Refresh(Count4, false)
+	Refresh(Count5, false)
+
+	local debugmenu = ""
+	if AllowDebug then
+		debugmenu = { text = C_GREEN..L["Debug"], checked = pf.Debug, isNotRadio = true, 
+			keepShownOnClick = false,
+			func = function() 
+				checked = not checked
+				pf.Debug = checked
+			end, }
+	end
+	menu = {
+		{ text = L["Item Count Options"], colorCode = C_YELLOW, isTitle = true, 
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+
+		debugmenu,
+
+		{ text = L["--- Item List ---"], isTitle = 0, 
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+		{ text = L["Checked = Frozen"], isTitle = 0,
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+		{ text = L["Left-click to freeze/unfreeze"], isTitle = 0,
+			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
+
+		{ text = Count1.item.." - "..tostring(Count1.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count1.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count1.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count1.item, tostring(Count1.Goal), Count1)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 1), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 1; checked = true; --debugSay("Counting 1");
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 1");
+			end, },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count2.item.." - "..tostring(Count2.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count2.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count2.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count2.item, tostring(Count2.Goal), Count2)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 2), hasArrow = false, keepShownOnClick = true,
+			leftPadding = 12, 
+			func = function()
+				pf.watched = 2; checked = true; --debugSay("Counting 2"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 2");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count3.item.." - "..tostring(Count3.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count3.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count3.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count3.item, tostring(Count3.Goal), Count3)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 3), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 3; checked = true; --debugSay("Counting 3"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 3");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count4.item.." - "..tostring(Count4.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count4.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count4.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count4.item, tostring(Count4.Goal), Count4)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 4), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 4; checked = true; --debugSay("Counting 4"); 
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 4");
+			end },
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+
+		{ text = Count5.item.." - "..tostring(Count5.Goal), colorCode = C_YELLOW,
+			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
+			checked = Count5.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; Count5.frozen = checked; end,
+			menuList = {
+				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
+					func = function()
+						E:StaticPopup_Show('GetGoalQty', Count5.item, tostring(Count5.Goal), Count5)
+					end,
+				},
+			},
+		},
+		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
+			checked = (pf.watched == 5), hasArrow = false, keepShownOnClick = false,
+			leftPadding = 12,
+			func = function() 
+				pf.watched = 5; checked = true; --debugSay("Counting 5");
+				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 5");
+			end },
+
+
+		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
+		{ text = L["Close"], isNotRadio = true, notCheckable = true, colorCode = C_YELLOW,
+			tooltipTitle = " ",
+			tooltipText = L["Click here to close menu"], keepShownOnClick = false, 
+			justifyH = "CENTER", },
+
+	}
+
+end
+
+
 function LoadDialogs()
 
 	E.PopupDialogs['BadGoal'] = {
 		text = L["You must enter an integer zero or higher"],
 		button1 = OKAY,
 		hasEditBox = false,
-		OnShow = function(IC)
-			PlaySound(137776, "SFX")
-		end,
+		sound = 137776,
 		timeout = 1,
 		whileDead = true,
 		preferredIndex = 3,
 		hideOnEscape = true,
+		enterClicksFirstButton = true,
 		exclusive = true,
 	}
 
@@ -598,28 +651,40 @@ function LoadDialogs()
 		text = "Item Count ERROR: there are no unfrozen Count slots",
 		button1 = OKAY,
 		hasEditBox = false,
-		OnShow = function(IC)
-			PlaySound(137776, "SFX")
-		end,
+		sound = 137776,
 		timeout = 4,
 		whileDead = true,
 		preferredIndex = 3,
 		hideOnEscape = true,
+		enterClicksFirstButton = true,
 		exclusive = true,
 	}
 
 	E.PopupDialogs['AlreadyCounting'] = {
 		text = "Item Count ERROR: you are already counting that item",
 		button1 = OKAY,
-		OnShow = function(IC)
-			PlaySound(137776, "SFX")
-		end,
+		sound = 137776,
 		hasEditBox = false,
 		timeout = 4,
 		whileDead = true,
 		preferredIndex = 3,
 		hideOnEscape = true,
+		enterClicksFirstButton = true,
 		exclusive = true,
+	}
+
+	E.PopupDialogs['NowCounting'] = {
+		text = C_YELLOW.."Item Count: now counting %s in slot #%s",
+		button1 = OKAY,
+		button2 = CANCEL,
+		hasEditBox = false,
+		sound = 137776,
+		timeout = 4,
+		whileDead = true,
+		preferredIndex = 3,
+		hideOnEscape = true,
+		enterClicksFirstButton = true,
+		exclusive = true
 	}
 
 	E.PopupDialogs['BadItem'] = {
@@ -634,26 +699,25 @@ function LoadDialogs()
 	}
 
 	E.PopupDialogs['GetGoalQty'] = {
-		text = L["Enter the desired quantity."],
+		text = "Enter the desired goal quantity for %s",
 		name = "dlgGetGoal",
+		sound = 137776,
 		button1 = OKAY,
 		button2 = CANCEL,
 		hasEditBox = true,
-		EditBoxOnEnterPressed = function(IC)
-			GoalChanged(IC:GetNumber())
-			IC:GetParent():Hide();
+		EditBoxOnEscapePressed = function(self)
+		   self:GetParent():Hide()
 		end,
-		EditBoxOnEscapePressed = function(IC)
-			IC:GetParent():Hide();
+		OnShow = function(self)
+		   edBox = getglobal(self:GetName().."EditBox")
+		   edBox:SetNumeric(true)
+		   edBox:SetText(tostring(self.data.Goal))
+		   edBox:HighlightText()
 		end,
-		OnShow = function(IC)
-			edBox = getglobal(IC:GetName().."EditBox")
-			edBox:SetNumeric(true)
-			edBox:SetText(tostring("EDIT"));
-			edBox:HighlightText()
-		end,
-		OnAccept = function(IC)
-			GoalChanged(edBox:GetNumber())
+		enterClicksFirstButton = true,
+		OnAccept = function(self)
+		   self.data.Goal = edBox:GetNumber()
+		   newButtonText()
 		end,
 		timeout = 0,
 		whileDead = true,
@@ -662,40 +726,24 @@ function LoadDialogs()
 		enterClicksFirstButton = true,
 		exclusive = true,
 	}
+end
 
-	E.PopupDialogs['ConfirmReplace'] = {
-		text = L["New counted item %s will also replace the first unfrozen Item Pattern (%s). Is this what you want?"],
-		name = "dlgConfirmReplace",
-		button1 = YES,
-		button2 = NO,
-		hasEditBox = false,
-		OnShow = function(IC)
-			PlaySound(137776, "SFX")
-		end,
-		OnAccept = function(IC)
-			print(C_YELLOW.."ACCEPTED"..C_WHITE)
-		end,
-		timeout = 0,
-		whileDead = true,
-		preferredIndex = 3,
-		hideOnEscape = true,
-		enterClicksFirstButton = true,
-		exclusive = true,
-	}
 
-	E.PopupDialogs['AllFrozen'] = {
-		text = L["All Item Patterns are frozen; %s will be Counted, but without being stored in an Item Pattern."],
-		name = "dlgAllFrozen",
-		sound = "Whisper",
-		button1 = OKAY,
-		hasEditBox = false,
-		timeout = 0,
-		whileDead = true,
-		preferredIndex = 3,
-		hideOnEscape = true,
-		enterClicksFirstButton = true,
-		exclusive = true,
-	}
+local function Click(IC, btn)
+-- OPEN Configuration Dialog
+
+	DT.tooltip:Hide()
+	if btn == "RightButton" then
+		MakeMenu()
+		EasyMenu(menu, menuFrame, "cursor", -10, -10, "MENU")
+
+	elseif IsControlKeyDown() then
+		newButtonText()
+
+	else
+		Open_IC_Options()
+
+	end
 
 end
 

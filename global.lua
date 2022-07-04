@@ -28,3 +28,34 @@ C_PURPLE = "|cffEE22aa"
 C_BROWN  = "|cfff4a460"
 C_BLUE   = "|cff4fa8e3"
 
+
+-- Functions
+
+function shallowcopy(orig)
+   local orig_type = type(orig)
+   local copy
+   if orig_type == 'table' then
+      copy = {}
+      for orig_key, orig_value in pairs(orig) do
+         copy[orig_key] = orig_value
+      end
+    else -- number, string, boolean, etc
+      copy = orig
+    end
+    return copy
+end
+
+function YesNo(boolarg)
+	if boolarg then
+		return L["Yes"]
+	else
+		return L["No"]
+	end
+end
+
+function debugSay(pTxt)
+	if AllowDebug and pf.Debug then
+		print(C_MGNTA.."ItemCount: " ..C_YELLOW..pTxt)
+	end
+end
+

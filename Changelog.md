@@ -1,3 +1,8 @@
+## v2.0 Apr 11 2022
+
+- each of the 5 counted items can have its own alert sound, and each may be configured to chime on collection or not
+- one of the 5 counted items can be "watched" by displaying in the datatext; all others will be displayed in the tooltip
+
 ## v1.5.1 Jan 29 2022
 
 - Fixed some spelling
