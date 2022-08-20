@@ -1,12 +1,12 @@
-local Version = "2.0"
-local AllowDebug = true
+local Version = "2.0.01"
+local AllowDebug = false
 
 --[[
 
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0
+						v2.0.01
 					
 					To Do:
 					
