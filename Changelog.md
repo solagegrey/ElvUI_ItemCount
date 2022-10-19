@@ -1,6 +1,11 @@
+### v2.0.1 Oct 18 2022
+
+- bump 10.0.2
+- fixed wrong string in config display
+
 ### v2.0.01 Aug 20 2022
 
-- bump toc for 9.1.7
+- bump toc for 9.2.7
 
 ### v2.0 Jul 04 2022
 

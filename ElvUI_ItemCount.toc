@@ -1,7 +1,7 @@
-## Interface: 90207
-## Title: |cff1784d1ElvUI|r Item Count 2.0.01
+## Interface: 10
+## Title: |cff1784d1ElvUI|r Item Count 2.0.1
 ## Notes: Shows Quantity on Hand for a specified item; chimes when counted item is collected; signals when goal quantity is reached
-## Version: 2.0.01
+## Version: 2.0.1
 ## SavedVariables: ItemCountDB
 ## Author: Solage of Greymane
 ## RequiredDeps: ElvUI

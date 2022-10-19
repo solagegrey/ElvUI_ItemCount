@@ -1,4 +1,4 @@
-local Version = "2.0.01"
+local Version = "2.0.1"
 local AllowDebug = false
 
 --[[
@@ -6,7 +6,7 @@ local AllowDebug = false
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.01
+						v2.0.1
 					
 					To Do:
 					
@@ -949,8 +949,8 @@ function InjectOptions()
 						},
 						goal1 = {
 							type	= 'input',
-							name	= "QoH",
-							desc	= "Qty on Hand",
+							name	= "Goal Qty",
+							desc	= "Goal Quantity",
 							get		= function() return tostring(Count1.Goal) end,
 							set		= function(info, value)
 								Count1.Goal = tonumber(value)
