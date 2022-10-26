@@ -2,6 +2,7 @@
 
 - bump 10.0.0
 - fixed wrong string in config display
+- removed extraneous file
 
 ### v2.0.01 Aug 20 2022
 
