@@ -1,6 +1,6 @@
-### v2.0.1 Oct 18 2022
+### v2.0.2 Oct 26 2022
 
-- bump 10.0.2
+- bump 10.0.0
 - fixed wrong string in config display
 
 ### v2.0.01 Aug 20 2022
