@@ -1,3 +1,10 @@
+### v2.0.3 Nov 16 2022
+
+- bump 10.0.2
+- alt-click feature is disabled for debugging. To set counted items,
+use the main config interface
+- fixed various features that were broken by changes to called procedures, e.g. chiming when not supposed to (bag update without increase in count for counted item), and combat-text not appearing on reaching goal
+
 ### v2.0.2 Oct 26 2022
 
 - bump 10.0.0

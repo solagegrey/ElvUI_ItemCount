@@ -1,28 +1,77 @@
-local Version = "2.0.1"
-local AllowDebug = false
+local Version = "2.0.3"
+local AllowDebug = true
 
 --[[
 
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.1
+						v2.0.3
 					
 					To Do:
 					
-					- don't allow Alt-Right-Click feature while config is open
+					- Alt-Right-Click feature re-enable, when we can figure out
+					- how to hook Blizzard's ContainerFrameItemButtonMixin:OnClick 
 
 
 
 ]]--
+
+
+-- Addon Objects
+
+E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
+IC = E:NewModule('ElvUI Item Count', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
+DT = E:GetModule('DataTexts')
+EP = LibStub("LibElvUIPlugin-1.0")
+ADB = LibStub("AceDB-3.0")
+
+-- Color Constants
+
+hexColor = "|cff00ff96"
+C_YELLOW = "|cffffff00"
+C_GREEN  = "|cff00ff00"
+C_WHITE  = "|cffffffff"
+C_RED    = "|cffff4f8b"
+C_TURQ   = "|cff22ee55"
+C_AQUA   = "|cff44eeaa" --22ee77"
+C_MGNTA  = "|cffff0088"
+C_PURPLE = "|cffEE22aa"
+C_BROWN  = "|cfff4a460"
+C_BLUE   = "|cff4fa8e3"
+
+
+-- Functions
+
+function shallowcopy(orig)
+   local orig_type = type(orig)
+   local copy
+   if orig_type == 'table' then
+      copy = {}
+      for orig_key, orig_value in pairs(orig) do
+         copy[orig_key] = orig_value
+      end
+    else -- number, string, boolean, etc
+      copy = orig
+    end
+    return copy
+end
+
+function YesNo(boolarg)
+	if boolarg then
+		return L["Yes"]
+	else
+		return L["No"]
+	end
+end
+
 
 local format = string.format
 local join = string.join
 local floor = math.floor
 local wipe = table.wipe
 
-local shallowcopy = shallowcopy
-local YesNo = YesNo
+local GetCVarBool = GetCVarBool
 
 --------------- LIBRARIES ------------------
 
@@ -32,7 +81,6 @@ IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
 
 --------------- VARIABLES ------------------
 local newButtonText = function() end
-
 
 local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
 
@@ -201,10 +249,16 @@ local function Refresh(cObj, pAlert)
 	NewQuantity = GetItemCount(cObj.item)
 	DeltaQ = NewQuantity - cObj.QoH
 	if DeltaQ == 0 then return end
+	debugSay("DeltaQ: " .. DeltaQ .. "; NewQuantity: " .. NewQuantity)
+
+	if cObj.Goal > NewQuantity then
+		debugSay("NewQuantity: " .. NewQuantity .."; Goal: " .. cObj.Goal)
+		cObj.Alerted = false
+	end
 
 	if pAlert and DeltaQ > 0 then -- INCREASED
 
-		debugSay("Alerting/Chiming - NewQuantity = " .. tonumber(NewQuantity) ..", Goal = " 
+		debugSay("Alerting/Chiming - NewQuantity = " .. tonumber(NewQuantity) ..", Goal = "
 			.. tonumber(cObj.Goal) ..", already Alerted = " .. YesNo(cObj.Alerted))
 
 		if cObj.QoH < cObj.Goal and NewQuantity >= cObj.Goal then
@@ -213,23 +267,23 @@ local function Refresh(cObj, pAlert)
 				-- UNLESS it's already been sounded, e.g. cascade of BAG_UPDATE events
 				-- play BellSound, Show Goal Met Text
 				if not cObj.Silent then PlaySound(Bells[cObj.BellSound]); end
-				cTxt = L["Item Count Goal Attained"] .. "\r" .. cObj.item .. " = " .. NewQuantity
-				CombatText_AddMessage(cTxt, CombatText_StandardScroll, 
-					0.9, 0.2, 0.5, "crit", true)
+				cTxt = L["Item Count Goal Attained"] .. ": " .. cObj.item .. " = " .. NewQuantity
+				if GetCVarBool("enableFloatingCombatText") == true then
+					CombatText_AddMessage(cTxt, CombatText_StandardScroll, 0.9, 0.2, 0.5, "crit", true)
+				end
 				cObj.Alerted = true
-				print(C_YELLOW .. cTxt .. C_WHITE)
 			end
 		else
 			-- play Chime, Show Got Qty Text
 			cTxt = "+" ..tostring(DeltaQ) .." ".. cObj.item
 			if cObj.Chime then PlaySound(ChimeSound,"SFX"); end
-			CombatText_AddMessage(cTxt, CombatText_StandardScroll, 2, 2, 1, "sticky", true)
+			if GetCVarBool("enableFloatingCombatText") == true then
+				CombatText_AddMessage(cTxt, CombatText_StandardScroll, 2, 2, 1, "sticky", true)
+			end
 			--0.9, 0.2, 0.5, "sticky", true)
-			print(C_YELLOW .. cTxt ..C_WHITE)
 		end
-	elseif DeltaQ < 0 and cObj.QoH > NewQuantity then
-		-- if DECREASED to below old quantity then reset Alerted flag
-		cObj.Alerted = false
+		print(C_GREEN .. "ItemCount: " .. C_YELLOW .. cTxt ..C_WHITE)
+
 	end
 
 	cObj.QoH = NewQuantity
@@ -246,6 +300,8 @@ local function OnEvent(self, event, ...)
 	if not IC.initialized then
 		IC:OnInitialize()
 	end
+
+	debugSay(event)
 
 	if event == "BAG_UPDATE_DELAYED" then
 		debugSay(C_YELLOW.."Refresh - OnEvent("..YesNo(okToAlert)..")")
@@ -354,7 +410,7 @@ end
 
 
 local function Open_IC_Options()
-	E:ToggleOptionsUI()
+	E:ToggleOptions() --E:ToggleOptionsUI()
 	local ACD = E.Libs.AceConfigDialog
 	if ACD then ACD:SelectGroup('ElvUI', "itemcount"); end
 end
@@ -394,9 +450,8 @@ end
 
 function IC:RefreshConfig(event, database, newProfileKey)
 	-- would do some stuff here
-	if AllowDebug and pf.Debug then
-		print("Pattern Set changed to "..newProfileKey.." - Event = "..event)
-	end
+	debugSay("Pattern Set changed to "..newProfileKey.." - Event = "..event)
+
 	pf = database.profile
 
 	if not pf.count1 then
@@ -406,11 +461,19 @@ function IC:RefreshConfig(event, database, newProfileKey)
 end
 
 
+function debugSay(pTxt)
+	if pTxt == nil then pTxt = "?" end
+	if AllowDebug and pf.Debug then
+		print(C_MGNTA.."ItemCount: " ..C_YELLOW..pTxt)
+	end
+end
+
+
 local function setItem(cObj, pItem)
 
 	cObj.item = pItem
 	Refresh(cObj)
-	print(C_YELLOW.."Item Count: "..C_WHITE.." Item for Counter #"..tostring(cObj.index)
+	debugSay(C_WHITE.." Item for Counter #"..tostring(cObj.index)
 		.. " set to " .. pItem)
 	newButtonText()
 
@@ -423,18 +486,19 @@ local function ConfigIsActive()
 
 end
 
+--[[
+
+-- disable alt-right-click until further notice - blizz func changed to a Mixin
 
 function IC:ContainerFrameItemButton_OnModifiedClick(...)
 	-- Alt-Right-Click
 	local newItem
 
-	if AllowDebug and pf.Debug then
-		print("OnModifiedClick(): AltKey="..YesNo(IsAltKeyDown()))
-	end
-	
+	debugSay("OnModifiedClick(): AltKey="..YesNo(IsAltKeyDown()))
+
 	if ConfigIsActive() then return 0 end
 
-	if select(2,...) == "RightButton" and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
+	if select(2,...) and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
 
 		bagID, slot = (...):GetParent():GetID(), (...):GetID()
 		texture, itemCount, locked, quality, readable, lootable, itemLink = 
@@ -442,9 +506,7 @@ function IC:ContainerFrameItemButton_OnModifiedClick(...)
 
 		newItem = tostring(itemLink)
 
-		if AllowDebug and pf.Debug then
-			print("newItem: "..newItem)
-		end
+		debugSay("newItem: "..newItem)
 
 		if Count1.item == newItem or Count2.item == newItem or Count3.item == newItem
 		or Count4.item == newItem or Count5.item == newItem then
@@ -464,12 +526,22 @@ function IC:ContainerFrameItemButton_OnModifiedClick(...)
 
 	end
 
-	if select(2,...) == "RightButton" and IsControlKeyDown() and not IsAltKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
+	if select(2,...) and IsControlKeyDown() and not IsAltKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
 		newButtonText()
 	end
 
+end
+
+
+
+function IC:OnEnable()
+	-- Usage: Hook([object], method, [handler], [hookSecure])
+
+	-- disable alt-click feature for now, until we can debug
+	IC:Hook(ContainerFrameItemButtonMixin, "OnClick", OnClick, true)
 
 end
+]]--
 
 
 function SetDefaults(obj)
@@ -786,11 +858,6 @@ function IC:OnInitialize()
 end
 
 
-function IC:OnEnable()
-	-- Usage: Hook([object], method, [handler], [hookSecure])
-	self:Hook("ContainerFrameItemButton_OnModifiedClick", true)
-end
-
 
 function ADB:OnEnable()
 	print("ADB Enabled")
@@ -853,7 +920,7 @@ function InjectOptions()
 					desc	= L["Print Debug messages"],
 					get		= function() return pf.Debug end,
 					set		= function(info, value)
-						pf.Debug= value
+						pf.Debug = value
 					end,
 					hidden	= not AllowDebug,
 					order	= 90,
@@ -918,7 +985,7 @@ function InjectOptions()
 					name	= " [   Counted Items   ] ",
 					order	= 500,
 				},
-						
+
 
 				-- ***********************   ITEM 1   ***************************
 				item1group = {
@@ -954,6 +1021,7 @@ function InjectOptions()
 							get		= function() return tostring(Count1.Goal) end,
 							set		= function(info, value)
 								Count1.Goal = tonumber(value)
+								-- reset Count1.
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1045,8 +1113,8 @@ function InjectOptions()
 						},
 						goal2 = {
 							type	= 'input',
-							name	= "QoH",
-							desc	= "Qty on Hand",
+							name	= "Goal Qty",
+							desc	= "Goal Quantity",
 							get		= function() return tostring(Count2.Goal) end,
 							set		= function(info, value)
 								Count2.Goal = tonumber(value)
@@ -1141,8 +1209,8 @@ function InjectOptions()
 						},
 						goal3 = {
 							type	= 'input',
-							name	= "QoH",
-							desc	= "Qty on Hand",
+							name	= "Goal Qty",
+							desc	= "Goal Quantity",
 							get		= function() return tostring(Count3.Goal) end,
 							set		= function(info, value)
 								Count3.Goal = tonumber(value)
@@ -1237,8 +1305,8 @@ function InjectOptions()
 						},
 						goal4 = {
 							type	= 'input',
-							name	= "QoH",
-							desc	= "Qty on Hand",
+							name	= "Goal Qty",
+							desc	= "Goal Quantity",
 							get		= function() return tostring(Count4.Goal) end,
 							set		= function(info, value)
 								Count4.Goal = tonumber(value)
@@ -1333,8 +1401,8 @@ function InjectOptions()
 						},
 						goal5 = {
 							type	= 'input',
-							name	= "QoH",
-							desc	= "Qty on Hand",
+							name	= "Goal Qty",
+							desc	= "Goal Quantity",
 							get		= function() return tostring(Count5.Goal) end,
 							set		= function(info, value)
 								Count5.Goal = tonumber(value)
