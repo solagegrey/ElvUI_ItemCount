@@ -1,3 +1,9 @@
+### v2.0.31 Nov 22 2022
+
+- turn off debugging so users don't get schmegged in chat frame
+- alt-click for adding a counted item from bags is STILL disabled. Bliz changed the API and it's too complicated for my puny intellect
+- including Ace3 libs now, because ElvUI apparently doesn't carry one that's needed here? I don't remember which one.
+
 ### v2.0.3 Nov 16 2022
 
 - bump 10.0.2

@@ -1,16 +1,23 @@
 ## Interface: 100002
-## Title: |cff1784d1ElvUI|r Item Count 2.0.3
+## Title: |cff1784d1ElvUI|r Item Count 2.0.31
 ## Notes: Shows Quantity on Hand for a specified item; chimes when counted item is collected; signals when goal quantity is reached
-## Version: 2.0.3
+## Version: 2.0.31
 ## SavedVariables: ItemCountDB
 ## Author: Solage of Greymane
-## RequiredDeps: ElvUI
+## RequiredDeps: Ace3, ElvUI
 ## LoadWith: ElvUI
 ## X-Category: Plugins
 ## X-Website: http://wow.curseforge.com/addons/elvui-itemcount/
 ## X-Localizations: enUS, enGB, deDE, frFR, esES, esMX, zhCN, zhTW, koKR, ruRU
 ## X-CompatibleLocales: enUS, enGB, deDE, frFR, esES, esMX, zhCN, zhTW, koKR, ruRU
 ## X-Curse-Project-ID: 55953
+
+
+Ace3/LibStub/LibStub.lua
+Ace3/AceEvent-3.0/AceEvent-3.0.xml
+Ace3/AceTimer-3.0/AceTimer-3.0.xml
+Ace3/AceHook-3.0/AceHook-3.0.xml
+Ace3/AceDB-3.0/AceDB-3.0.xml
 
 locales/load_locales.xml
 ItemCount.lua

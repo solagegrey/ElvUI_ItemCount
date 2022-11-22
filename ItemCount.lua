@@ -1,17 +1,17 @@
-local Version = "2.0.3"
-local AllowDebug = true
+local Version = "2.0.31"
+local AllowDebug = false
 
 --[[
 
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.3
-					
+						v2.0.31
+
 					To Do:
-					
+
 					- Alt-Right-Click feature re-enable, when we can figure out
-					- how to hook Blizzard's ContainerFrameItemButtonMixin:OnClick 
+					  how to hook Blizzard's ContainerFrameItemButtonMixin:OnClick 
 
 
 
@@ -490,7 +490,8 @@ end
 
 -- disable alt-right-click until further notice - blizz func changed to a Mixin
 
-function IC:ContainerFrameItemButton_OnModifiedClick(...)
+--function IC:ContainerFrameItemButton_OnModifiedClick(...)
+function BagOnClick(...)
 	-- Alt-Right-Click
 	local newItem
 
@@ -538,7 +539,7 @@ function IC:OnEnable()
 	-- Usage: Hook([object], method, [handler], [hookSecure])
 
 	-- disable alt-click feature for now, until we can debug
-	IC:Hook(ContainerFrameItemButtonMixin, "OnClick", OnClick, true)
+	IC:Hook(ContainerFrameItemButtonMixin, "OnClick", BagOnClick, true)
 
 end
 ]]--
@@ -801,7 +802,7 @@ function LoadDialogs()
 end
 
 
-local function Click(IC, btn)
+function OnClick(IC, btn)
 -- OPEN Configuration Dialog
 
 	DT.tooltip:Hide()
@@ -1487,4 +1488,4 @@ EP:RegisterPlugin(..., InjectOptions)
 	onLeaveFunc - function to fire OnLeave, if not provided one will be set for you that hides the tooltip.
 ]]--
 
-DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, Click, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
+DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, OnClick, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
