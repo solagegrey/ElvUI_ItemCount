@@ -1,3 +1,8 @@
+### v2.0.32 Jan 18 2023
+
+- removed hard dependency for Ace3; the libs are included - may be able to remove
+- fixed SetFormattedText arguments
+
 ### v2.0.31 Nov 22 2022
 
 - turn off debugging so users don't get schmegged in chat frame

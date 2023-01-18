@@ -1,4 +1,4 @@
-local Version = "2.0.31"
+local Version = "2.0.32"
 local AllowDebug = false
 
 --[[
@@ -6,7 +6,7 @@ local AllowDebug = false
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.31
+						v2.0.32
 
 					To Do:
 
@@ -324,7 +324,7 @@ local function OnEvent(self, event, ...)
 	elseif pf.watched == 5 then ButtonText = getText(Count5)
 	end
 
-	self.text:SetFormattedText(displayString, ButtonText)
+	self.text:SetFormattedText(displayString, ButtonText, -1)
 
 	lastPanel = self
 
@@ -874,13 +874,14 @@ SlashCmdList['IC'] = Slash_IC
 
 
 -- this is here so that the datatext button display will refresh
+--[[
 local function ValueColorUpdate(hex, r, g, b)   
 	displayString = join("", hex, "%s|r")
 	hexColor = hex
 	if lastPanel then OnEvent(lastPanel) end
 end
 E['valueColorUpdateFuncs'][ValueColorUpdate] = true
-
+]]--
 
 function InjectOptions()
 
@@ -1487,5 +1488,13 @@ EP:RegisterPlugin(..., InjectOptions)
 	onEnterFunc - function to fire OnEnter
 	onLeaveFunc - function to fire OnLeave, if not provided one will be set for you that hides the tooltip.
 ]]--
+
+local function ValueColorUpdate(self, hex)
+	--displayString = strjoin('', '%s', hex, '%d|r')
+	displayString = join("", hex, "%s|r")
+	OnEvent(self)
+end
+
+
 
 DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, OnClick, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
