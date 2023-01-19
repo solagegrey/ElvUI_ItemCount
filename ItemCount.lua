@@ -1,4 +1,4 @@
-local Version = "2.0.32"
+local Version = "2.0.33"
 local AllowDebug = false
 
 --[[
@@ -6,7 +6,7 @@ local AllowDebug = false
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.32
+						v2.0.33
 
 					To Do:
 
@@ -20,30 +20,30 @@ local AllowDebug = false
 
 -- Addon Objects
 
-E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
-IC = E:NewModule('ElvUI Item Count', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
-DT = E:GetModule('DataTexts')
-EP = LibStub("LibElvUIPlugin-1.0")
-ADB = LibStub("AceDB-3.0")
+local E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
+local IC = E:NewModule('ElvUI Item Count', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
+local DT = E:GetModule('DataTexts')
+local EP = LibStub("LibElvUIPlugin-1.0")
+local ADB = LibStub("AceDB-3.0")
 
 -- Color Constants
 
-hexColor = "|cff00ff96"
-C_YELLOW = "|cffffff00"
-C_GREEN  = "|cff00ff00"
-C_WHITE  = "|cffffffff"
-C_RED    = "|cffff4f8b"
-C_TURQ   = "|cff22ee55"
-C_AQUA   = "|cff44eeaa" --22ee77"
-C_MGNTA  = "|cffff0088"
-C_PURPLE = "|cffEE22aa"
-C_BROWN  = "|cfff4a460"
-C_BLUE   = "|cff4fa8e3"
+local hexColor = "|cff00ff96"
+local C_YELLOW = "|cffffff00"
+local C_GREEN  = "|cff00ff00"
+local C_WHITE  = "|cffffffff"
+local C_RED    = "|cffff4f8b"
+local C_TURQ   = "|cff22ee55"
+local C_AQUA   = "|cff44eeaa" --22ee77"
+local C_MGNTA  = "|cffff0088"
+local C_PURPLE = "|cffEE22aa"
+local C_BROWN  = "|cfff4a460"
+local C_BLUE   = "|cff4fa8e3"
 
 
 -- Functions
 
-function shallowcopy(orig)
+local function shallowcopy(orig)
    local orig_type = type(orig)
    local copy
    if orig_type == 'table' then
@@ -57,11 +57,18 @@ function shallowcopy(orig)
     return copy
 end
 
-function YesNo(boolarg)
+local function YesNo(boolarg)
 	if boolarg then
 		return L["Yes"]
 	else
 		return L["No"]
+	end
+end
+
+local function debugSay(pTxt)
+	if pTxt == nil then pTxt = "?" end
+	if AllowDebug and pf.Debug then
+		print(C_MGNTA.."ItemCount: " ..C_YELLOW..pTxt)
 	end
 end
 
@@ -178,7 +185,7 @@ local BellsIndex = {}
 
 -- Bell Sound List
 local ChimeSound = 5274 --AuctionOpen
-Bells = {
+local Bells = {
 	-- it would be nice to be able to control the order of appearance in the dropdown
 
 	AuctionClose  = 5275,
@@ -430,7 +437,7 @@ local function getProfileList(db, nocurrent)
 end
 
 
-function InitDB()
+local function InitDB()
 
 	db = ADB:New("ItemCountDB", defaults, true)
 	db.RegisterCallback(IC, "OnProfileChanged", "RefreshConfig")
@@ -458,14 +465,6 @@ function IC:RefreshConfig(event, database, newProfileKey)
 		SetDefaults(pf)
 	end
 
-end
-
-
-function debugSay(pTxt)
-	if pTxt == nil then pTxt = "?" end
-	if AllowDebug and pf.Debug then
-		print(C_MGNTA.."ItemCount: " ..C_YELLOW..pTxt)
-	end
 end
 
 
@@ -545,7 +544,7 @@ end
 ]]--
 
 
-function SetDefaults(obj)
+local function SetDefaults(obj)
 
 	shallowcopy(obj, defaults)
 	shallowcopy(obj.count1, defaults.count1)
@@ -705,7 +704,7 @@ local function MakeMenu()
 end
 
 
-function LoadDialogs()
+local function LoadDialogs()
 
 	E.PopupDialogs['BadGoal'] = {
 		text = L["You must enter an integer zero or higher"],
@@ -802,7 +801,7 @@ function LoadDialogs()
 end
 
 
-function OnClick(IC, btn)
+local function OnClick(IC, btn)
 -- OPEN Configuration Dialog
 
 	DT.tooltip:Hide()
@@ -865,7 +864,7 @@ function ADB:OnEnable()
 end
 
 
-function Slash_IC(msg, editbox)
+local function Slash_IC(msg, editbox)
 	Open_IC_Options()
 end
 SLASH_IC1 = "/ic"
@@ -883,7 +882,7 @@ end
 E['valueColorUpdateFuncs'][ValueColorUpdate] = true
 ]]--
 
-function InjectOptions()
+local function InjectOptions()
 
 	if not pf then
 		pf = defaults.profile

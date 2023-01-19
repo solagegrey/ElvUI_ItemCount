@@ -1,3 +1,7 @@
+### v2.0.33 Jan 19 2023
+
+- made local what could be made local, to avoid polluting global namespace - per recommendation of Azilroka
+
 ### v2.0.32 Jan 18 2023
 
 - removed hard dependency for Ace3; the libs are included - may be able to remove
