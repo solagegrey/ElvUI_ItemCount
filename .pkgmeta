@@ -1,8 +1,8 @@
 package-as: ElvUI_ItemCount
 
 manual-changelog:
-    filename: CHANGELOG.html
-    markup-type: html
+    filename: CHANGELOG.md
+    markup-type: markdown
 
 required-dependencies:
     ElvUI
