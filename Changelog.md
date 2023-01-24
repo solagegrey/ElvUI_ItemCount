@@ -1,3 +1,7 @@
+### v2.0.331 Jan 24 2023
+
+- bump toc for 10.0.5
+
 ### v2.0.33 Jan 19 2023
 
 - made local what could be made local, to avoid polluting global namespace - per recommendation of Azilroka
