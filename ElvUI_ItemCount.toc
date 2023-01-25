@@ -1,11 +1,12 @@
 ## Interface: 100005
 
-## Title: |cff1784d1ElvUI|r Item Count 2.0.34
+## Title: |cff1784d1ElvUI|r Item Count 2.0.35
 ## Author: Solage of Greymane
-## Version: 2.0.34
+## Version: 2.0.35
 ## Notes: Shows Quantity on Hand for a specified item; chimes when counted item is collected; signals when goal quantity is reached
 ## SavedVariables: ItemCountDB
 ## RequiredDeps: ElvUI
+## OptionalDeps: Ace3
 ## LoadWith: ElvUI
 ## X-Interface: 100005
 ## X-Category: Plugins
@@ -15,11 +16,6 @@
 ## X-Curse-Project-ID: 55953
 
 
-Ace3/LibStub/LibStub.lua
-Ace3/AceEvent-3.0/AceEvent-3.0.xml
-Ace3/AceTimer-3.0/AceTimer-3.0.xml
-Ace3/AceHook-3.0/AceHook-3.0.xml
-Ace3/AceDB-3.0/AceDB-3.0.xml
-
+libs/load_libs.xml
 locales/load_locales.xml
 ItemCount.lua

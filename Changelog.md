@@ -1,3 +1,6 @@
+### v2.0.35 Jan 24 2023
+* hopefully fixed localization errors - even though localization for this addon is, so far, redundant and superfluous (not to mention incompetent and immaterial)
+
 ### v2.0.34 Jan 24 2023
 
 * bump toc for 10.0.5
