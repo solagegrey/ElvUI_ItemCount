@@ -1,4 +1,4 @@
-local Version = "2.0.37"
+local Version = "2.0.39"
 local AllowDebug = false
 
 --[[
@@ -6,7 +6,7 @@ local AllowDebug = false
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.37
+						v2.0.38
 
 					To Do:
 
@@ -128,20 +128,20 @@ local defaults = {
 		Debug = AllowDebug,
 		count1 = {
 			index = 1,
-			item = "Linen Cloth",
-			Goal = 0,
+			item = "[Key Fragments]",
+			Goal = 30,
 			BellSound = "AllianceBell",
-			frozen = false,
+			frozen = true,
 			Silent = false,
 			Chime = true,
 			Alerted = false
 		},
 		count2 = {
 			index = 2,
-			item = "Undefined 2",
-			Goal = 0,
-			BellSound = "AllianceBell",
-			frozen = false,
+			item = "[Zskera Vault Key]",
+			Goal = 26,
+			BellSound = "Sailing",
+			frozen = true,
 			Silent = false,
 			Chime = true,
 			Alerted = false
@@ -356,7 +356,7 @@ end
 local function doToolTip(cObj)
 
 	local chimestr = "Chime "..C_RED.."OFF"
-	local silentstr = "Silent "..C_RED.."OFF"
+	local silentstr = "Silent "..C_RED.."FALSE"
 	local sKey = C_AQUA.." "
 
 	if not cObj or not cObj.item then return; end
@@ -364,7 +364,7 @@ local function doToolTip(cObj)
 	if not cObj.Goal then cObj.Goal = 0 end
 
 	if cObj.Chime == true then chimestr = "Chime "..C_GREEN.."ON"; end
-	if cObj.Silent == true then silentstr = "Silent "..C_GREEN.."ON"; end
+	if cObj.Silent == true then silentstr = "Silent "..C_GREEN.."TRUE"; end
 
 	if cObj.frozen == true then sKey = sKey.."F"; end
 	if pf.watched == cObj.index then sKey = sKey.."W"; end
@@ -902,7 +902,8 @@ local function InjectOptions()
 			args	= {
 				header = {
 					type	= "header",
-					name	= L["ItemCount"] .. C_GREEN ..' ' .. Version,
+					name	= L["ItemCount"] .. C_GREEN ..' ' .. Version
+						.. C_YELLOW .. ' by ' .. C_BLUE .. 'Solage of Greymane',
 					order	= 20,
 				},
 				space0 = {
@@ -910,11 +911,21 @@ local function InjectOptions()
 					name	= "   ItemCount Database Version " .. db.global.db_version,
 					order	= 40,
 				},
+
+
+		-- GENERAL INFO
+
 				header2b = {
 					type	= "header",
 					name	= " [    General Options    ] ",
 					order	= 50,
 				},
+
+				buglink = {
+					order = 51, type = 'input', width = 'full', name = 'Suggestions and Bug Reports:',
+					get = function() return 'https://github.com/solagegrey/ElvUI_ItemCount/issues' end,
+				},
+
 				Debug = {
 					type	= 'toggle',
 					name	= L["Debug"],
@@ -927,7 +938,9 @@ local function InjectOptions()
 					order	= 90,
 				},
 
+
 		-- PATTERN SETS (profiles)
+
 				header2 = {
 					type	= 'header',
 					name	= " [   Pattern Sets   ] ",
@@ -980,7 +993,9 @@ local function InjectOptions()
 					order	= 370,
 				},
 
-				-- ITEM LIST
+
+		-- ITEM LIST
+
 				header3 = {
 					type	= 'header',
 					name	= " [   Counted Items   ] ",
@@ -1043,7 +1058,7 @@ local function InjectOptions()
 						silent1		= {
 							type	= 'toggle',
 							name	= "Silent",
-							desc	= L['Announce goal met for this item'],
+							desc	= L['Checked = do not announce goal met for this item'],
 							get		= function() return Count1.Silent end,
 							set		= function(info, value)
 								Count1.Silent = value
@@ -1139,7 +1154,7 @@ local function InjectOptions()
 						silent2 = {
 							type	= 'toggle',
 							name	= "Silent",
-							desc	= L['Announce goal met for this item'],
+							desc	= L['Checked = do not announce goal met for this item'],
 							get		= function() return Count2.Silent end,
 							set		= function(info, value)
 								Count2.Silent = value
@@ -1235,7 +1250,7 @@ local function InjectOptions()
 						silent3 = {
 							type	= 'toggle',
 							name	= "Silent",
-							desc	= L['Announce goal met for this item'],
+							desc	= L['Checked = do not announce goal met for this item'],
 							get		= function() return Count3.Silent end,
 							set		= function(info, value)
 								Count3.Silent = value
@@ -1331,7 +1346,7 @@ local function InjectOptions()
 						silent4 = {
 							type	= 'toggle',
 							name	= "Silent",
-							desc	= L['Announce goal met for this item'],
+							desc	= L['Checked = do not announce goal met for this item'],
 							get		= function() return Count4.Silent end,
 							set		= function(info, value)
 								Count4.Silent = value
@@ -1427,7 +1442,7 @@ local function InjectOptions()
 						silent5		= {
 							type	= 'toggle',
 							name	= "Silent",
-							desc	= L['Announce goal met for this item'],
+							desc	= L['Checked = do not announce goal met for this item'],
 							get		= function() return Count5.Silent end,
 							set		= function(info, value)
 								Count5.Silent = value
