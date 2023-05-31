@@ -1,4 +1,4 @@
-local Version = "2.0.39"
+local Version = "2.0.40"
 local AllowDebug = false
 
 --[[
@@ -6,7 +6,7 @@ local AllowDebug = false
 						ElvUI ItemCount
 						Solage of Greymane
 
-						v2.0.38
+						v2.0.40
 
 					To Do:
 
@@ -126,6 +126,7 @@ local defaults = {
 		text = "",
 		watched = 1,
 		Debug = AllowDebug,
+		ChatOK = true,
 		count1 = {
 			index = 1,
 			item = "[Key Fragments]",
@@ -289,7 +290,9 @@ local function Refresh(cObj, pAlert)
 			end
 			--0.9, 0.2, 0.5, "sticky", true)
 		end
-		print(C_GREEN .. "ItemCount: " .. C_YELLOW .. cTxt ..C_WHITE)
+		if pf.ChatOK then
+			print(C_GREEN .. "ItemCount: " .. C_YELLOW .. cTxt ..C_WHITE)
+		end
 
 	end
 
@@ -936,6 +939,17 @@ local function InjectOptions()
 					end,
 					hidden	= not AllowDebug,
 					order	= 90,
+				},
+				
+				ChatOK = {
+					type	= 'toggle',
+					name	= L["Send info to chat box"],
+					desc	= L["Report to chat box when a counted item is collected"],
+					get		= function() return pf.ChatOK end,
+					set		= function(info, value)
+						pf.ChatOK = value
+					end,
+					order	= 95,
 				},
 
 
