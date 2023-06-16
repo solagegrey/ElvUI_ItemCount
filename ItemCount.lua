@@ -40,6 +40,35 @@ local C_PURPLE = "|cffEE22aa"
 local C_BROWN  = "|cfff4a460"
 local C_BLUE   = "|cff4fa8e3"
 
+--------------- VARIABLES ------------------
+local newButtonText = function() end
+
+local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
+
+local edBox = {}
+local ix = 0
+local tt = {}
+local menu = {}
+local tmpprofiles = {}
+
+local pfList
+local enteredFrame = false
+local lastPanel
+local dtframe
+local displayString = ""
+local db = {}
+local pf = {}
+local initialized = false
+local Count1 = {}
+local Count2 = {}
+local Count3 = {}
+local Count4 = {}
+local Count5 = {}
+
+local self = IC
+local okToAlert = false
+local NewGoal
+
 
 -- Functions
 
@@ -86,33 +115,6 @@ local IsAddonLoaded = IsAddonLoaded
 
 IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
 
---------------- VARIABLES ------------------
-local newButtonText = function() end
-
-local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
-
-local edBox = {}
-local ix = 0
-local tt = {}
-local menu = {}
-local tmpprofiles = {}
-
-local pfList
-local enteredFrame = false
-local lastPanel
-local dtframe
-local displayString = ""
-local db, pf
-local initialized = false
-local Count1 = {}
-local Count2 = {}
-local Count3 = {}
-local Count4 = {}
-local Count5 = {}
-
-local self = IC
-local okToAlert = false
-local NewGoal
 
 --------------- OBJECTS ------------------
 
@@ -327,6 +329,7 @@ local function OnEvent(self, event, ...)
 
 	end
 
+	ButtonText = ""
 	if pf.watched == 1 then ButtonText = getText(Count1)
 	elseif pf.watched == 2 then ButtonText = getText(Count2)
 	elseif pf.watched == 3 then ButtonText = getText(Count3)
@@ -835,6 +838,8 @@ function IC:OnInitialize()
 
 	if not pf then
 		pf = defaults.profile
+	end
+	if not db then
 		InitDB()
 	end
 
@@ -893,8 +898,10 @@ local function InjectOptions()
 	end
 
 	local db_version = "alpha"
-	if db.global.db_version then
+	if not db == nil and not db.global == nil and not db.global.db_version == nil then
 		db_version = db.global.db_version
+	else
+		db_version = defaults.global.db_version
 	end
 
 	if not E.Options.args.itemcount then
@@ -911,7 +918,7 @@ local function InjectOptions()
 				},
 				space0 = {
 					type	= 'description',
-					name	= "   ItemCount Database Version " .. db.global.db_version,
+					name	= "   ItemCount Database Version " .. db_version,
 					order	= 40,
 				},
 
@@ -1526,3 +1533,5 @@ end
 
 
 DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, OnClick, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
+
+InitDB()
