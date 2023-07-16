@@ -1,5 +1,6 @@
 ### v2.0.40 May 31 2023
 * new feature squelch info to chat
+* bump 10.1.5
 
 ### v2.0.39 May 05 2023
 * set TOC for 10.1.0
