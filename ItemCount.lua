@@ -1,33 +1,27 @@
-local Version = "2.0.40"
-local AllowDebug = false
+local Version = "2.1.00"
+local AllowDebug = true
 
 --[[
 
-						ElvUI ItemCount
-						Solage of Greymane
+			ElvUI ItemCount
+				Solage of Greymane
 
-						v2.0.40
+			v2.1.00
 
 					To Do:
 
-					- Alt-Right-Click feature re-enable, when we can figure out
-					  how to hook Blizzard's ContainerFrameItemButtonMixin:OnClick 
-
-
+					
 
 ]]--
 
 
 -- Addon Objects
-
 local E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
-local IC = E:NewModule('ElvUI Item Count', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
+local IC = E:NewModule('ElvUI ItemCount', 'AceTimer-3.0', 'AceHook-3.0', 'AceEvent-3.0')
 local DT = E:GetModule('DataTexts')
-local EP = LibStub("LibElvUIPlugin-1.0")
-local ADB = LibStub("AceDB-3.0")
+local EP = E.Libs.EP --LibStub("LibElvUIPlugin-1.0")
 
 -- Color Constants
-
 local hexColor = "|cff00ff96"
 local C_YELLOW = "|cffffff00"
 local C_GREEN  = "|cff00ff00"
@@ -41,34 +35,21 @@ local C_BROWN  = "|cfff4a460"
 local C_BLUE   = "|cff4fa8e3"
 
 --------------- VARIABLES ------------------
-local newButtonText = function() end
-
 local menuFrame = CreateFrame("Frame", "ItemCountMenu", E.UIParent, "UIDropDownMenuTemplate")
-
 local edBox = {}
 local ix = 0
 local tt = {}
 local menu = {}
 local tmpprofiles = {}
-
-local pfList
 local enteredFrame = false
-local lastPanel
-local dtframe
+
+--local dtframe
 local displayString = ""
-local db = {}
-local pf = {}
-local initialized = false
-local Count1 = {}
-local Count2 = {}
-local Count3 = {}
-local Count4 = {}
-local Count5 = {}
-
-local self = IC
+local db
 local okToAlert = false
-local NewGoal
 
+-- is this really needed?
+if not E.db.itemcount then E.db.itemcount = {} end 
 
 -- Functions
 
@@ -95,8 +76,11 @@ local function YesNo(boolarg)
 end
 
 local function debugSay(pTxt)
+	if not AllowDebug then return end
+
 	if pTxt == nil then pTxt = "?" end
-	if AllowDebug and pf.Debug then
+
+	if E.db.itemcount.Debug == true then
 		print(C_MGNTA.."ItemCount: " ..C_YELLOW..pTxt)
 	end
 end
@@ -118,69 +102,62 @@ IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
 
 --------------- OBJECTS ------------------
 
-local defaults = {
-
-	global = {
-		db_version = "1001",
+P["itemcount"] = {
+	["watched"] = 1,
+	["Debug"] = AllowDebug,
+	["ChatOK"] = true,
+	["Count1"] = {
+		["index"] = 1,
+		["item"] = "[Key Fragments]",
+		["Goal"] = 30,
+		["BellSound"] = "HordeBell",
+		["frozen"] = true,
+		["Silent"] = false,
+		["Chime"] = true,
+		["Alerted"] = false,
 	},
-	profile = {
-		id = "",
-		text = "",
-		watched = 1,
-		Debug = AllowDebug,
-		ChatOK = true,
-		count1 = {
-			index = 1,
-			item = "[Key Fragments]",
-			Goal = 30,
-			BellSound = "AllianceBell",
-			frozen = true,
-			Silent = false,
-			Chime = true,
-			Alerted = false
-		},
-		count2 = {
-			index = 2,
-			item = "[Zskera Vault Key]",
-			Goal = 26,
-			BellSound = "Sailing",
-			frozen = true,
-			Silent = false,
-			Chime = true,
-			Alerted = false
-		},
-		count3 = {
-			index = 3,
-			item = "Undefined 3",
-			Goal = 0,
-			BellSound = "AllianceBell",
-			frozen = false,
-			Silent = false,
-			Chime = true,
-			Alerted = false
-		},
-		count4 = {
-			index = 4,
-			item = "Undefined 4",
-			Goal = 0,
-			BellSound = "AllianceBell",
-			frozen = false,
-			Silent = false,
-			Chime = true,
-			Alerted = false
-		},
-		count5 = {
-			index = 5,
-			item = "Undefined 5",
-			Goal = 0,
-			BellSound = "AllianceBell",
-			frozen = false,
-			Silent = false,
-			Chime = true,
-			Alerted = false
-		},
+	["Count2"] = {
+		["index"] = 2,
+		["item"] = "[Zskera Vault Key]",
+		["Goal"] = 26,
+		["BellSound"] = "Sailing",
+		["frozen"] = true,
+		["Silent"] = false,
+		["Chime"] = true,
+		["Alerted"] = false,
+	},
+	["Count3"] = {
+		["index"] = 3,
+		["item"] = "[Ominous Conch]",
+		["Goal"] = 30,
+		["BellSound"] = "HordeBell",
+		["frozen"] = false,
+		["Silent"] = false,
+		["Chime"] = true,
+		["Alerted"] = false,
+	},
+	["Count4"] = {
+		["index"] = 4,
+		["item"] = "[Ominous Conch]",
+		["Goal"] = 15,
+		["BellSound"] = "HordeBell",
+		["frozen"] = false,
+		["Silent"] = false,
+		["Chime"] = true,
+		["Alerted"] = false,
+	},
+	["Count5"] = {
+		["index"] = 5,
+		["item"] = "[Ominous Conch]",
+		["Goal"] = 5,
+		["BellSound"] = "HordeBell",
+		["frozen"] = false,
+		["Silent"] = false,
+		["Chime"] = true,
+		["Alerted"] = false,
 	},
 }
+
 
 local BellsList = {}
 local BellsLabel = {}
@@ -246,10 +223,15 @@ end
 local function Refresh(cObj, pAlert)
 -- find current QoH; chime or sound bell if appropriate
 
-	if not pAlert then pAlert = false; end
+	if pAlert == nil then pAlert = false; end
 
 	local NewQuantity
 	local newText
+
+	if cObj == nil then
+		debugSay("Refresh(): cObj is nil")
+		return
+	end
 
 	if cObj.QoH == nil then
 		cObj.QoH = 0
@@ -292,7 +274,7 @@ local function Refresh(cObj, pAlert)
 			end
 			--0.9, 0.2, 0.5, "sticky", true)
 		end
-		if pf.ChatOK then
+		if E.db.itemcount.ChatOK then
 			print(C_GREEN .. "ItemCount: " .. C_YELLOW .. cTxt ..C_WHITE)
 		end
 
@@ -303,58 +285,51 @@ local function Refresh(cObj, pAlert)
 end
 
 
-local function OnEvent(self, event, ...)
-	if self == nil then
-		print(L["OnEventSelfError"])
-		return
+local function RefreshCounts(AlertOk)
+	if E.db.itemcount then
+		Refresh(E.db.itemcount.Count1, AlertOk)
+		Refresh(E.db.itemcount.Count2, AlertOk)
+		Refresh(E.db.itemcount.Count3, AlertOk)
+		Refresh(E.db.itemcount.Count4, AlertOk)
+		Refresh(E.db.itemcount.Count5, AlertOk)
+
+		if E.db.itemcount.watched == 1 then
+			ButtonText = getText(E.db.itemcount.Count1)
+		elseif E.db.itemcount.watched == 2 then 
+			ButtonText = getText(E.db.itemcount.Count2)
+		elseif E.db.itemcount.watched == 3 then 
+			ButtonText = getText(E.db.itemcount.Count3)
+		elseif E.db.itemcount.watched == 4 then 
+			ButtonText = getText(E.db.itemcount.Count4)
+		elseif E.db.itemcount.watched == 5 then 
+			ButtonText = getText(E.db.itemcount.Count5)
+		end
+
+		if IC.text then IC.text:SetFormattedText(displayString, ButtonText, -1) end
+
+	else 
+		debugSay("RefreshCounts() -- E.db.itemcount is nil")
 	end
-
-	if not IC.initialized then
-		IC:OnInitialize()
-	end
-
-	debugSay(event)
-
-	if event == "BAG_UPDATE_DELAYED" then
-		debugSay(C_YELLOW.."Refresh - OnEvent("..YesNo(okToAlert)..")")
-
-		-- true = Alert or Chime if appropriate
-		Refresh(Count1, okToAlert)
-		Refresh(Count2, okToAlert)
-		Refresh(Count3, okToAlert)
-		Refresh(Count4, okToAlert)
-		Refresh(Count5, okToAlert)
-
-		if not okToAlert then okToAlert = true; end
-
-	end
-
-	ButtonText = ""
-	if pf.watched == 1 then ButtonText = getText(Count1)
-	elseif pf.watched == 2 then ButtonText = getText(Count2)
-	elseif pf.watched == 3 then ButtonText = getText(Count3)
-	elseif pf.watched == 4 then ButtonText = getText(Count4)
-	elseif pf.watched == 5 then ButtonText = getText(Count5)
-	end
-
-	self.text:SetFormattedText(displayString, ButtonText, -1)
-
-	lastPanel = self
-
 end
 
 
-local function newButtonText()
+local function OnEvent(self, event) -- , ...
 
-	debugSay("Refresh - newButtonText()")
+	if event then 
+		debugSay("EVENT: " .. event) 
+	end
+	
+	if not IC.text then IC.text = self.text end
 
-	Refresh(Count1, false)
-	Refresh(Count2, false)
-	Refresh(Count3, false)
-	Refresh(Count4, false)
-	Refresh(Count5, false)
+	debugSay(C_YELLOW.."OnEvent("..YesNo(okToAlert)..")")
 
-	OnEvent(lastPanel)
+	if event == "BAG_UPDATE_DELAYED" then
+		RefreshCounts(okToAlert)
+		if not okToAlert then okToAlert = true; end
+	end
+
+	if not ButtonText then ButtonText = '[Item Count]' end
+	self.text:SetFormattedText(displayString, ButtonText, -1)  --self
 
 end
 
@@ -368,12 +343,13 @@ local function doToolTip(cObj)
 	if not cObj or not cObj.item then return; end
 	if not cObj.QoH then cObj.QoH = 0 end
 	if not cObj.Goal then cObj.Goal = 0 end
+	if not cObj.BellSound then cObj.BellSound = "?" end
 
 	if cObj.Chime == true then chimestr = "Chime "..C_GREEN.."ON"; end
 	if cObj.Silent == true then silentstr = "Silent "..C_GREEN.."TRUE"; end
 
 	if cObj.frozen == true then sKey = sKey.."F"; end
-	if pf.watched == cObj.index then sKey = sKey.."W"; end
+	if E.db.itemcount.watched == cObj.index then sKey = sKey.."W"; end
 	if cObj.QoH >= cObj.Goal and cObj.Goal > 0 then sKey = sKey.."#" end
 
 	DT.tooltip:AddDoubleLine(tostring(cObj.index)..". " ..cObj.item..sKey, 
@@ -397,11 +373,11 @@ local function OnEnter(IC)
 	DT.tooltip:AddLine((L["%sElvUI|r ItemCount"].." ".. L["version"].." "..Version):format(hexColor), 1, 1, 1)
 	DT.tooltip:AddLine(" ")
 
-	doToolTip(Count1)
-	doToolTip(Count2)
-	doToolTip(Count3)
-	doToolTip(Count4)
-	doToolTip(Count5)
+	doToolTip(E.db.itemcount.Count1)
+	doToolTip(E.db.itemcount.Count2)
+	doToolTip(E.db.itemcount.Count3)
+	doToolTip(E.db.itemcount.Count4)
+	doToolTip(E.db.itemcount.Count5)
 
 	DT.tooltip:AddLine(" ")
 	DT.tooltip:AddLine(L["Left-Click datatext: configuration"])
@@ -416,9 +392,8 @@ local function OnEnter(IC)
 end
 
 
-local function OnUpdate(IC)
--- DO NOT PUT ANYTHING HERE that you don't want to run every millisecond
-	if not dtframe then dtframe = IC end
+local function OnLeave(IC)
+	-- not used
 end
 
 
@@ -429,129 +404,9 @@ local function Open_IC_Options()
 end
 
 
-local function getProfileList(db, nocurrent)
-	-- clear old profile table
-	local profiles = {}
-
-	-- copy existing profiles into the table
-	local curr = db.keys.profile
-	for i,v in pairs(db:GetProfiles(tmpprofiles)) do 
-		if not (nocurrent and v == curr) then profiles[v] = v end 
-	end
-
-	return profiles
-end
-
-
-local function InitDB()
-
-	db = ADB:New("ItemCountDB", defaults, true)
-	db.RegisterCallback(IC, "OnProfileChanged", "RefreshConfig")
-	db.RegisterCallback(IC, "OnProfileCopied", "RefreshConfig")
-	db.RegisterCallback(IC, "OnProfileReset", "RefreshConfig")
-
-	pf = db.profile
-
-	Count1 = pf.count1
-	Count2 = pf.count2
-	Count3 = pf.count3
-	Count4 = pf.count4
-	Count5 = pf.count5
-
-end
-
-
-function IC:RefreshConfig(event, database, newProfileKey)
-	-- would do some stuff here
-	debugSay("Pattern Set changed to "..newProfileKey.." - Event = "..event)
-
-	pf = database.profile
-
-	if not pf.count1 then
-		SetDefaults(pf)
-	end
-
-end
-
-
-local function setItem(cObj, pItem)
-
-	cObj.item = pItem
-	Refresh(cObj)
-	debugSay(C_WHITE.." Item for Counter #"..tostring(cObj.index)
-		.. " set to " .. pItem)
-	newButtonText()
-
-end
-
-
-local function ConfigIsActive()
-
-	return false
-
-end
-
---[[
-
--- disable alt-right-click until further notice - blizz func changed to a Mixin
-
---function IC:ContainerFrameItemButton_OnModifiedClick(...)
-function BagOnClick(...)
-	-- Alt-Right-Click
-	local newItem
-
-	debugSay("OnModifiedClick(): AltKey="..YesNo(IsAltKeyDown()))
-
-	if ConfigIsActive() then return 0 end
-
-	if select(2,...) and IsAltKeyDown() and not IsControlKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
-
-		bagID, slot = (...):GetParent():GetID(), (...):GetID()
-		texture, itemCount, locked, quality, readable, lootable, itemLink = 
-			GetContainerItemInfo(bagID, slot);
-
-		newItem = tostring(itemLink)
-
-		debugSay("newItem: "..newItem)
-
-		if Count1.item == newItem or Count2.item == newItem or Count3.item == newItem
-		or Count4.item == newItem or Count5.item == newItem then
---			print("Item Count ERROR: You are already counting "..newItem)
-			E:StaticPopup_Show('AlreadyCounting', '', '')
-			return
-		end
-
-		if Count1.frozen == false then setItem(Count1, newItem)
-		elseif Count2.frozen == false then setItem(Count2, newItem)
-		elseif Count3.frozen == false then setItem(Count3, newItem)
-		elseif Count4.frozen == false then setItem(Count4, newItem)
-		elseif Count5.frozen == false then setItem(Count5, newItem)
-		else
-			E:StaticPopup_Show('AllFrozen', '', '')
-		end
-
-	end
-
-	if select(2,...) and IsControlKeyDown() and not IsAltKeyDown() and not IsShiftKeyDown()and not CursorHasItem() then
-		newButtonText()
-	end
-
-end
-
-
-
-function IC:OnEnable()
-	-- Usage: Hook([object], method, [handler], [hookSecure])
-
-	-- disable alt-click feature for now, until we can debug
-	IC:Hook(ContainerFrameItemButtonMixin, "OnClick", BagOnClick, true)
-
-end
-]]--
-
-
 local function SetDefaults(obj)
 
+	debugSay("Setting Defaults for "..obj.name)
 	shallowcopy(obj, defaults)
 	shallowcopy(obj.count1, defaults.count1)
 	shallowcopy(obj.count2, defaults.count2)
@@ -566,19 +421,19 @@ local function MakeMenu()
 	local tt = {}
 	menu = wipe(menu)
 
-	Refresh(Count1, false)
-	Refresh(Count2, false)
-	Refresh(Count3, false)
-	Refresh(Count4, false)
-	Refresh(Count5, false)
+	Refresh(E.db.itemcount.Count1, false)
+	Refresh(E.db.itemcount.Count2, false)
+	Refresh(E.db.itemcount.Count3, false)
+	Refresh(E.db.itemcount.Count4, false)
+	Refresh(E.db.itemcount.Count5, false)
 
 	local debugmenu = ""
 	if AllowDebug then
-		debugmenu = { text = C_GREEN..L["Debug"], checked = pf.Debug, isNotRadio = true, 
+		debugmenu = { text = C_GREEN..L["Debug"], checked = E.db.itemcount.Debug, isNotRadio = true, 
 			keepShownOnClick = false,
 			func = function() 
 				checked = not checked
-				pf.Debug = checked
+				E.db.itemcount.Debug = checked
 			end, }
 	end
 	menu = {
@@ -594,108 +449,108 @@ local function MakeMenu()
 		{ text = L["Left-click to freeze/unfreeze"], isTitle = 0,
 			isNotRadio = true, notCheckable = true, justifyH = "CENTER", },
 
-		{ text = Count1.item.." - "..tostring(Count1.Goal), colorCode = C_YELLOW,
+		{ text = E.db.itemcount.Count1.item.." - "..tostring(E.db.itemcount.Count1.Goal), colorCode = C_YELLOW,
 			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-			checked = Count1.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count1.frozen = checked; end,
+			checked = E.db.itemcount.Count1.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; E.db.itemcount.Count1.frozen = checked; end,
 			menuList = {
 				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
 					func = function()
-						E:StaticPopup_Show('GetGoalQty', Count1.item, tostring(Count1.Goal), Count1)
+						E:StaticPopup_Show('GetGoalQty', E.db.itemcount.Count1.item, tostring(E.db.itemcount.Count1.Goal), E.db.itemcount.Count1)
 					end,
 				},
 			},
 		},
 		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
-			checked = (pf.watched == 1), hasArrow = false, keepShownOnClick = false,
+			checked = (E.db.itemcount.watched == 1), hasArrow = false, keepShownOnClick = false,
 			leftPadding = 12,
 			func = function() 
-				pf.watched = 1; checked = true; --debugSay("Counting 1");
-				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 1");
+				E.db.itemcount.watched = 1; checked = true; --debugSay("Counting 1");
+				RefreshCounts(false); CloseDropDownMenus(1); --debugSay("OK 1");
 			end, },
 		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
 
-		{ text = Count2.item.." - "..tostring(Count2.Goal), colorCode = C_YELLOW,
+		{ text = E.db.itemcount.Count2.item.." - "..tostring(E.db.itemcount.Count2.Goal), colorCode = C_YELLOW,
 			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-			checked = Count2.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count2.frozen = checked; end,
+			checked = E.db.itemcount.Count2.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; E.db.itemcount.Count2.frozen = checked; end,
 			menuList = {
 				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
 					func = function()
-						E:StaticPopup_Show('GetGoalQty', Count2.item, tostring(Count2.Goal), Count2)
+						E:StaticPopup_Show('GetGoalQty', E.db.itemcount.Count2.item, tostring(E.db.itemcount.Count2.Goal), E.db.itemcount.Count2)
 					end,
 				},
 			},
 		},
 		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
-			checked = (pf.watched == 2), hasArrow = false, keepShownOnClick = true,
+			checked = (E.db.itemcount.watched == 2), hasArrow = false, keepShownOnClick = true,
 			leftPadding = 12, 
 			func = function()
-				pf.watched = 2; checked = true; --debugSay("Counting 2"); 
-				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 2");
+				E.db.itemcount.watched = 2; checked = true; --debugSay("Counting 2"); 
+				RefreshCounts(false); CloseDropDownMenus(1); --debugSay("OK 2");
 			end },
 		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
 
-		{ text = Count3.item.." - "..tostring(Count3.Goal), colorCode = C_YELLOW,
+		{ text = E.db.itemcount.Count3.item.." - "..tostring(E.db.itemcount.Count3.Goal), colorCode = C_YELLOW,
 			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-			checked = Count3.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count3.frozen = checked; end,
+			checked = E.db.itemcount.Count3.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; E.db.itemcount.Count3.frozen = checked; end,
 			menuList = {
 				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
 					func = function()
-						E:StaticPopup_Show('GetGoalQty', Count3.item, tostring(Count3.Goal), Count3)
+						E:StaticPopup_Show('GetGoalQty', E.db.itemcount.Count3.item, tostring(E.db.itemcount.Count3.Goal), E.db.itemcount.Count3)
 					end,
 				},
 			},
 		},
 		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
-			checked = (pf.watched == 3), hasArrow = false, keepShownOnClick = false,
+			checked = (E.db.itemcount.watched == 3), hasArrow = false, keepShownOnClick = false,
 			leftPadding = 12,
 			func = function() 
-				pf.watched = 3; checked = true; --debugSay("Counting 3"); 
-				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 3");
+				E.db.itemcount.watched = 3; checked = true; --debugSay("Counting 3"); 
+				RefreshCounts(false); CloseDropDownMenus(1); --debugSay("OK 3");
 			end },
 		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
 
-		{ text = Count4.item.." - "..tostring(Count4.Goal), colorCode = C_YELLOW,
+		{ text = E.db.itemcount.Count4.item.." - "..tostring(E.db.itemcount.Count4.Goal), colorCode = C_YELLOW,
 			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-			checked = Count4.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count4.frozen = checked; end,
+			checked = E.db.itemcount.Count4.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; E.db.itemcount.Count4.frozen = checked; end,
 			menuList = {
 				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
 					func = function()
-						E:StaticPopup_Show('GetGoalQty', Count4.item, tostring(Count4.Goal), Count4)
+						E:StaticPopup_Show('GetGoalQty', E.db.itemcount.Count4.item, tostring(E.db.itemcount.Count4.Goal), E.db.itemcount.Count4)
 					end,
 				},
 			},
 		},
 		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
-			checked = (pf.watched == 4), hasArrow = false, keepShownOnClick = false,
+			checked = (E.db.itemcount.watched == 4), hasArrow = false, keepShownOnClick = false,
 			leftPadding = 12,
 			func = function() 
-				pf.watched = 4; checked = true; --debugSay("Counting 4"); 
-				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 4");
+				E.db.itemcount.watched = 4; checked = true; --debugSay("Counting 4"); 
+				RefreshCounts(false); CloseDropDownMenus(1); --debugSay("OK 4");
 			end },
 		{ text = "", isTitle = 1, isNotRadio = true, notCheckable = true },
 
-		{ text = Count5.item.." - "..tostring(Count5.Goal), colorCode = C_YELLOW,
+		{ text = E.db.itemcount.Count5.item.." - "..tostring(E.db.itemcount.Count5.Goal), colorCode = C_YELLOW,
 			isTitle = false, isNotRadio = true, notCheckable = false, hasArrow = true,
-			checked = Count5.frozen, keepShownOnClick = true,
-			func = function() checked = not checked; Count5.frozen = checked; end,
+			checked = E.db.itemcount.Count5.frozen, keepShownOnClick = true,
+			func = function() checked = not checked; E.db.itemcount.Count5.frozen = checked; end,
 			menuList = {
 				{ text = " Change Goal", isNotRadio = true, notCheckable = true,
 					func = function()
-						E:StaticPopup_Show('GetGoalQty', Count5.item, tostring(Count5.Goal), Count5)
+						E:StaticPopup_Show('GetGoalQty', E.db.itemcount.Count5.item, tostring(E.db.itemcount.Count5.Goal), E.db.itemcount.Count5)
 					end,
 				},
 			},
 		},
 		{ text = "  Watch This Item ^", isTitle = false, isNotRadio = false, notCheckable = false,
-			checked = (pf.watched == 5), hasArrow = false, keepShownOnClick = false,
+			checked = (E.db.itemcount.watched == 5), hasArrow = false, keepShownOnClick = false,
 			leftPadding = 12,
 			func = function() 
-				pf.watched = 5; checked = true; --debugSay("Counting 5");
-				newButtonText(); CloseDropDownMenus(1); --debugSay("OK 5");
+				E.db.itemcount.watched = 5; checked = true; --debugSay("Counting 5");
+				RefreshCounts(false); CloseDropDownMenus(1); --debugSay("OK 5");
 			end },
 
 
@@ -795,7 +650,7 @@ local function LoadDialogs()
 		enterClicksFirstButton = true,
 		OnAccept = function(self)
 		   self.data.Goal = edBox:GetNumber()
-		   newButtonText()
+		   RefreshCounts(false)
 		end,
 		timeout = 0,
 		whileDead = true,
@@ -816,7 +671,7 @@ local function OnClick(IC, btn)
 		EasyMenu(menu, menuFrame, "cursor", -10, -10, "MENU")
 
 	elseif IsControlKeyDown() then
-		newButtonText()
+		RefreshCounts(false)
 
 	else
 		Open_IC_Options()
@@ -828,20 +683,14 @@ end
 
 function IC:OnInitialize()
 
-	self.initialized = true
-
 	if E.db.general.loginmessage then
 		E:Delay(1, function () 
 			print(C_WHITE.."Loading "..C_BLUE..IC:GetName()..C_WHITE.." version "..Version)
 		end)
 	end
 
-	if not pf then
-		pf = defaults.profile
-	end
-	if not db then
-		InitDB()
-	end
+	--db = LibStub("AceDB-3.0"):New("ItemCountDB", defaults, true)
+	db = E.db.itemcount
 
 	--set up Alert Bell arrays for convenience
 	for k,v in pairs(Bells) do
@@ -852,23 +701,13 @@ function IC:OnInitialize()
 
 	LoadDialogs(IC)
 
-	Refresh(Count1, false)
-	Refresh(Count2, false)
-	Refresh(Count3, false)
-	Refresh(Count4, false)
-	Refresh(Count5, false)
+	RefreshCounts(false)
 
 	ctLoaded, ctFinished = IsAddOnLoaded("Blizzard_CombatText")
 	if not ctLoaded then
 		UIParentLoadAddOn("Blizzard_CombatText")
 	end
 
-end
-
-
-
-function ADB:OnEnable()
-	print("ADB Enabled")
 end
 
 
@@ -880,29 +719,7 @@ SLASH_IC2 = "/itemcount"
 SlashCmdList['IC'] = Slash_IC
 
 
--- this is here so that the datatext button display will refresh
---[[
-local function ValueColorUpdate(hex, r, g, b)   
-	displayString = join("", hex, "%s|r")
-	hexColor = hex
-	if lastPanel then OnEvent(lastPanel) end
-end
-E['valueColorUpdateFuncs'][ValueColorUpdate] = true
-]]--
-
 local function InjectOptions()
-
-	if not pf then
-		pf = defaults.profile
-		InitDB()
-	end
-
-	local db_version = "alpha"
-	if not db == nil and not db.global == nil and not db.global.db_version == nil then
-		db_version = db.global.db_version
-	else
-		db_version = defaults.global.db_version
-	end
 
 	if not E.Options.args.itemcount then
 		E.Options.args.itemcount = {
@@ -916,12 +733,6 @@ local function InjectOptions()
 						.. C_YELLOW .. ' by ' .. C_BLUE .. 'Solage of Greymane',
 					order	= 20,
 				},
-				space0 = {
-					type	= 'description',
-					name	= "   ItemCount Database Version " .. db_version,
-					order	= 40,
-				},
-
 
 		-- GENERAL INFO
 
@@ -940,9 +751,9 @@ local function InjectOptions()
 					type	= 'toggle',
 					name	= L["Debug"],
 					desc	= L["Print Debug messages"],
-					get		= function() return pf.Debug end,
+					get		= function() return E.db.itemcount.Debug end,
 					set		= function(info, value)
-						pf.Debug = value
+						E.db.itemcount.Debug = value
 					end,
 					hidden	= not AllowDebug,
 					order	= 90,
@@ -952,68 +763,12 @@ local function InjectOptions()
 					type	= 'toggle',
 					name	= L["Send info to chat box"],
 					desc	= L["Report to chat box when a counted item is collected"],
-					get		= function() return pf.ChatOK end,
+					get		= function() return E.db.itemcount.ChatOK end,
 					set		= function(info, value)
-						pf.ChatOK = value
+						E.db.itemcount.ChatOK = value
 					end,
 					order	= 95,
 				},
-
-
-		-- PATTERN SETS (profiles)
-
-				header2 = {
-					type	= 'header',
-					name	= " [   Pattern Sets   ] ",
-					order	= 300,
-				},
-				space5 = {
-					type	= 'description',
-					name	= "",
-					order	= 310,
-				},
-				selectprofile = {
-					name	= L["Select Pattern Set"],
-					type	= "select",
-					get		= function() return db:GetCurrentProfile() end,
-					set		= function(info, value) db:SetProfile(value) end,
-					values	= function() return getProfileList(db, false)   end,
-					order	= 320,
-				},
-				copyprofile = {
-					type	= 'select',
-					style	= 'dropdown',
-					desc	= L["This only copies ItemCount Pattern Sets, never any ElvUI configuration"],
-					name	= L["Copy Pattern Set"],
-					get		= function() return false end,
-					set		= function(info, value) db:CopyProfile(value) end,
-					values	= function() return getProfileList(db, true) end,
-					order	= 340,
-				},
-				space6 = {
-					type	= 'description',
-					name	= "",
-					order	= 350,
-				},
-				newprofile = {
-					type	= 'input',
-					name	= L["New Pattern Set"],
-					get		= function() return false end,
-					set		= function(info, value) db:SetProfile(value) end,
-					order	= 360,
-				},
-				rmprofile = {
-					type	= 'select',
-					style	= 'dropdown',
-					name	= L["Delete Pattern Set"],
-					get		= function() return false end,
-					set		= function(info, value) db:DeleteProfile(value) end,
-					values	= function() return getProfileList(db, true) end,
-					confirm	= true,
-					confirmText= L["Are you sure you want to delete the selected pattern set?"],
-					order	= 370,
-				},
-
 
 		-- ITEM LIST
 
@@ -1022,7 +777,6 @@ local function InjectOptions()
 					name	= " [   Counted Items   ] ",
 					order	= 500,
 				},
-
 
 				-- ***********************   ITEM 1   ***************************
 				item1group = {
@@ -1034,10 +788,10 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Item",
 							desc	= "Item to be counted",
-							get		= function() return Count1.item end,
+							get		= function() return E.db.itemcount.Count1.item end,
 							set		= function(info, value)
-								Count1.item = value
-								newButtonText()
+								E.db.itemcount.Count1.item = value
+								RefreshCounts(false)
 							end,
 							order	= 1110,
 						},			
@@ -1045,9 +799,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Frozen",
 							desc	= "Keep Item 1 from being overwritten",
-							get		= function() return Count1.frozen end,
+							get		= function() return E.db.itemcount.Count1.frozen end,
 							set		= function(info, value)
-								Count1.frozen = value
+								E.db.itemcount.Count1.frozen = value
 							end,
 							order	= 1120,
 						},
@@ -1055,10 +809,9 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Goal Qty",
 							desc	= "Goal Quantity",
-							get		= function() return tostring(Count1.Goal) end,
+							get		= function() return tostring(E.db.itemcount.Count1.Goal) end,
 							set		= function(info, value)
-								Count1.Goal = tonumber(value)
-								-- reset Count1.
+								E.db.itemcount.Count1.Goal = tonumber(value)
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1080,9 +833,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Silent",
 							desc	= L['Checked = do not announce goal met for this item'],
-							get		= function() return Count1.Silent end,
+							get		= function() return E.db.itemcount.Count1.Silent end,
 							set		= function(info, value)
-								Count1.Silent = value
+								E.db.itemcount.Count1.Silent = value
 							end,
 							order	= 1160,
 						},
@@ -1090,9 +843,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Chime",
 							desc	= L['Chime on collection for this item'],
-							get		= function() return Count1.Chime end,
+							get		= function() return E.db.itemcount.Count1.Chime end,
 							set		= function(info, value)
-								Count1.Chime = value
+								E.db.itemcount.Count1.Chime = value
 							end,
 							order	= 1170,
 						},
@@ -1101,9 +854,9 @@ local function InjectOptions()
 							name	= L["Alert Sound for meeting this goal"],
 							style	= "dropdown",
 							values	= BellsLabel,
-							get		= function() return BellsIndex[Count1.BellSound] end,
+							get		= function() return BellsIndex[E.db.itemcount.Count1.BellSound] end,
 							set		= function(info, value)
-								Count1.BellSound = BellsLabel[value]
+								E.db.itemcount.Count1.BellSound = BellsLabel[value]
 								PlaySound(Bells[BellsLabel[value]], "SFX")
 							end,
 							order	= 1180,
@@ -1112,8 +865,8 @@ local function InjectOptions()
 							type	= 'execute',
 							name	= L['Watch This Item'],
 							func	= function() 
-								pf.watched = 1
-								newButtonText()
+								E.db.itemcount.watched = 1
+								RefreshCounts(false)
 							end,
 							order	= 1190,
 						}, 
@@ -1131,10 +884,10 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Item",
 							desc	= "Item to be counted",
-							get		= function() return Count2.item end,
+							get		= function() return E.db.itemcount.Count2.item end,
 							set		= function(info, value)
-								Count2.item = value
-								newButtonText()
+								E.db.itemcount.Count2.item = value
+								RefreshCounts(false)
 							end,
 							order	= 1210,
 						},			
@@ -1142,9 +895,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Frozen",
 							desc	= "Keep Item 2 from being overwritten",
-							get		= function() return Count2.frozen end,
+							get		= function() return E.db.itemcount.Count2.frozen end,
 							set		= function(info, value)
-								Count2.frozen = value
+								E.db.itemcount.Count2.frozen = value
 							end,
 							order	= 1220,
 						},
@@ -1152,9 +905,9 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Goal Qty",
 							desc	= "Goal Quantity",
-							get		= function() return tostring(Count2.Goal) end,
+							get		= function() return tostring(E.db.itemcount.Count2.Goal) end,
 							set		= function(info, value)
-								Count2.Goal = tonumber(value)
+								E.db.itemcount.Count2.Goal = tonumber(value)
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1176,9 +929,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Silent",
 							desc	= L['Checked = do not announce goal met for this item'],
-							get		= function() return Count2.Silent end,
+							get		= function() return E.db.itemcount.Count2.Silent end,
 							set		= function(info, value)
-								Count2.Silent = value
+								E.db.itemcount.Count2.Silent = value
 							end,
 							order	= 1260,
 						},
@@ -1186,9 +939,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Chime",
 							desc	= L['Chime on collection for this item'],
-							get		= function() return Count2.Chime end,
+							get		= function() return E.db.itemcount.Count2.Chime end,
 							set		= function(info, value)
-								Count2.Chime = value
+								E.db.itemcount.Count2.Chime = value
 							end,
 							order	= 1270,
 						},
@@ -1197,9 +950,9 @@ local function InjectOptions()
 							name	= L["Alert Sound for meeting this goal"],
 							style	= "dropdown",
 							values	= BellsLabel,
-							get		= function() return BellsIndex[Count2.BellSound] end,
+							get		= function() return BellsIndex[E.db.itemcount.Count2.BellSound] end,
 							set		= function(info, value)
-								Count2.BellSound = BellsLabel[value]
+								E.db.itemcount.Count2.BellSound = BellsLabel[value]
 								PlaySound(Bells[BellsLabel[value]], "SFX")
 							end,
 							order	= 1280,
@@ -1208,8 +961,8 @@ local function InjectOptions()
 							type	= 'execute',
 							name	= L['Watch This Item'],
 							func	= function() 
-								pf.watched = 2
-								newButtonText()
+								E.db.itemcount.watched = 2
+								RefreshCounts(false)
 							end,
 							order	= 1290,
 						},
@@ -1227,10 +980,10 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Item",
 							desc	= "Item to be counted",
-							get		= function() return Count3.item end,
+							get		= function() return E.db.itemcount.Count3.item end,
 							set		= function(info, value)
-								Count3.item = value
-								newButtonText()
+								E.db.itemcount.Count3.item = value
+								RefreshCounts(false)
 							end,
 							order	= 1310,
 						},			
@@ -1238,9 +991,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Frozen",
 							desc	= "Keep Item 3 from being overwritten",
-							get		= function() return Count3.frozen end,
+							get		= function() return E.db.itemcount.Count3.frozen end,
 							set		= function(info, value)
-								Count3.frozen = value
+								E.db.itemcount.Count3.frozen = value
 							end,
 							order	= 1320,
 						},
@@ -1248,9 +1001,9 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Goal Qty",
 							desc	= "Goal Quantity",
-							get		= function() return tostring(Count3.Goal) end,
+							get		= function() return tostring(E.db.itemcount.Count3.Goal) end,
 							set		= function(info, value)
-								Count3.Goal = tonumber(value)
+								E.db.itemcount.Count3.Goal = tonumber(value)
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1272,9 +1025,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Silent",
 							desc	= L['Checked = do not announce goal met for this item'],
-							get		= function() return Count3.Silent end,
+							get		= function() return E.db.itemcount.Count3.Silent end,
 							set		= function(info, value)
-								Count3.Silent = value
+								E.db.itemcount.Count3.Silent = value
 							end,
 							order	= 1360,
 						},
@@ -1282,9 +1035,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Chime",
 							desc	= L['Chime on collection for this item'],
-							get		= function() return Count3.Chime end,
+							get		= function() return E.db.itemcount.Count3.Chime end,
 							set		= function(info, value)
-								Count3.Chime = value
+								E.db.itemcount.Count3.Chime = value
 							end,
 							order	= 1370,
 						},
@@ -1293,9 +1046,9 @@ local function InjectOptions()
 							name	= L["Alert Sound for meeting this goal"],
 							style	= "dropdown",
 							values	= BellsLabel,
-							get		= function() return BellsIndex[Count3.BellSound] end,
+							get		= function() return BellsIndex[E.db.itemcount.Count3.BellSound] end,
 							set		= function(info, value)
-								Count3.BellSound = BellsLabel[value]
+								E.db.itemcount.Count3.BellSound = BellsLabel[value]
 								PlaySound(Bells[BellsLabel[value]], "SFX")
 							end,
 							order	= 1380,
@@ -1304,8 +1057,8 @@ local function InjectOptions()
 							type	= 'execute',
 							name	= L['Watch This Item'],
 							func	= function() 
-								pf.watched = 3
-								newButtonText()
+								E.db.itemcount.watched = 3
+								RefreshCounts(false)
 							end,
 							order	= 1390,
 						},
@@ -1323,10 +1076,10 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Item",
 							desc	= "Item to be counted",
-							get		= function() return Count4.item end,
+							get		= function() return E.db.itemcount.Count4.item end,
 							set		= function(info, value)
-								Count4.item = value
-								newButtonText()
+								E.db.itemcount.Count4.item = value
+								RefreshCounts(false)
 							end,
 							order	= 1410,
 						},			
@@ -1334,9 +1087,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Frozen",
 							desc	= "Keep Item 4 from being overwritten",
-							get		= function() return Count4.frozen end,
+							get		= function() return E.db.itemcount.Count4.frozen end,
 							set		= function(info, value)
-								Count4.frozen = value
+								E.db.itemcount.Count4.frozen = value
 							end,
 							order	= 1420,
 						},
@@ -1344,9 +1097,9 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Goal Qty",
 							desc	= "Goal Quantity",
-							get		= function() return tostring(Count4.Goal) end,
+							get		= function() return tostring(E.db.itemcount.Count4.Goal) end,
 							set		= function(info, value)
-								Count4.Goal = tonumber(value)
+								E.db.itemcount.Count4.Goal = tonumber(value)
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1368,9 +1121,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Silent",
 							desc	= L['Checked = do not announce goal met for this item'],
-							get		= function() return Count4.Silent end,
+							get		= function() return E.db.itemcount.Count4.Silent end,
 							set		= function(info, value)
-								Count4.Silent = value
+								E.db.itemcount.Count4.Silent = value
 							end,
 							order	= 1460,
 						},
@@ -1378,9 +1131,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Chime",
 							desc	= L['Chime on collection for this item'],
-							get		= function() return Count4.Chime end,
+							get		= function() return E.db.itemcount.Count4.Chime end,
 							set		= function(info, value)
-								Count4.Chime = value
+								E.db.itemcount.Count4.Chime = value
 							end,
 							order	= 1470,
 						},
@@ -1389,9 +1142,9 @@ local function InjectOptions()
 							name	= L["Alert Sound for meeting this goal"],
 							style	= "dropdown",
 							values	= BellsLabel,
-							get		= function() return BellsIndex[Count4.BellSound] end,
+							get		= function() return BellsIndex[E.db.itemcount.Count4.BellSound] end,
 							set		= function(info, value)
-								Count4.BellSound = BellsLabel[value]
+								E.db.itemcount.Count4.BellSound = BellsLabel[value]
 								PlaySound(Bells[BellsLabel[value]], "SFX")
 							end,
 							order	= 1480,
@@ -1400,8 +1153,8 @@ local function InjectOptions()
 							type	= 'execute',
 							name	= L['Watch This Item'],
 							func	= function() 
-								pf.watched = 4
-								newButtonText()
+								E.db.itemcount.watched = 4
+								RefreshCounts(false)
 							end,
 							order	= 1490,
 						},
@@ -1419,10 +1172,11 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Item",
 							desc	= "Item to be counted",
-							get		= function() return Count5.item end,
+							get		= function() return E.db.itemcount.Count5.item end,
 							set		= function(info, value)
-								Count5.item = value
-								newButtonText()
+								E.db.itemcount.Count5.item = value
+								RefreshCounts(false)
+								IC.text:SetFormattedText(displayString, ButtonText, -1)
 							end,
 							order	= 1510,
 						},			
@@ -1430,9 +1184,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Frozen",
 							desc	= "Keep Item 5 from being overwritten",
-							get		= function() return Count5.frozen end,
+							get		= function() return E.db.itemcount.Count5.frozen end,
 							set		= function(info, value)
-								Count5.frozen = value
+								E.db.itemcount.Count5.frozen = value
 							end,
 							order	= 1520,
 						},
@@ -1440,9 +1194,9 @@ local function InjectOptions()
 							type	= 'input',
 							name	= "Goal Qty",
 							desc	= "Goal Quantity",
-							get		= function() return tostring(Count5.Goal) end,
+							get		= function() return tostring(E.db.itemcount.Count5.Goal) end,
 							set		= function(info, value)
-								Count5.Goal = tonumber(value)
+								E.db.itemcount.Count5.Goal = tonumber(value)
 							end,
 							validate	= function(info, value)
 								local tnum
@@ -1464,9 +1218,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Silent",
 							desc	= L['Checked = do not announce goal met for this item'],
-							get		= function() return Count5.Silent end,
+							get		= function() return E.db.itemcount.Count5.Silent end,
 							set		= function(info, value)
-								Count5.Silent = value
+								E.db.itemcount.Count5.Silent = value
 							end,
 							order	= 1560,
 						},
@@ -1474,9 +1228,9 @@ local function InjectOptions()
 							type	= 'toggle',
 							name	= "Chime",
 							desc	= L['Chime on collection for this item'],
-							get		= function() return Count5.Chime end,
+							get		= function() return E.db.itemcount.Count5.Chime end,
 							set		= function(info, value)
-								Count5.Chime = value
+								E.db.itemcount.Count5.Chime = value
 							end,
 							order	= 1570,
 						},
@@ -1485,9 +1239,9 @@ local function InjectOptions()
 							name	= L["Alert Sound for meeting this goal"],
 							style	= "dropdown",
 							values	= BellsLabel,
-							get		= function() return BellsIndex[Count5.BellSound] end,
+							get		= function() return BellsIndex[E.db.itemcount.Count5.BellSound] end,
 							set		= function(info, value)
-								Count5.BellSound = BellsLabel[value]
+								E.db.itemcount.Count5.BellSound = BellsLabel[value]
 								PlaySound(Bells[BellsLabel[value]], "SFX")
 							end,
 							order	= 1580,
@@ -1496,8 +1250,8 @@ local function InjectOptions()
 							type	= 'execute',
 							name	= L['Watch This Item'],
 							func	= function() 
-								pf.watched = 5
-								newButtonText()
+								E.db.itemcount.watched = 5
+								RefreshCounts(false)
 							end,
 							order	= 1590,
 						},
@@ -1509,20 +1263,6 @@ local function InjectOptions()
 	end
 
 end
-EP:RegisterPlugin(..., InjectOptions)
-
---[[
-	DT:RegisterDatatext(name, category, events, eventFunc, updateFunc, clickFunc, onEnterFunc, onLeaveFunc, localizedName, objectEvent, colorUpdate)	
-
-	name - name of the datatext (required)
-	category - menu category
-	events - must be a table with string values of event names to register 
-	eventFunc - function that gets fired when an event gets triggered
-	updateFunc - onUpdate script target function
-	click - function to fire when clicking the datatext
-	onEnterFunc - function to fire OnEnter
-	onLeaveFunc - function to fire OnLeave, if not provided one will be set for you that hides the tooltip.
-]]--
 
 local function ValueColorUpdate(self, hex)
 	--displayString = strjoin('', '%s', hex, '%d|r')
@@ -1530,8 +1270,6 @@ local function ValueColorUpdate(self, hex)
 	OnEvent(self)
 end
 
-
+EP:RegisterPlugin(..., InjectOptions)
 
 DT:RegisterDatatext('ItemCount', 'Miscellaneous', {"PLAYER_ENTERING_WORLD","BAG_UPDATE_DELAYED"}, OnEvent, OnUpdate, OnClick, OnEnter, OnLeave, 'Item Count', nil, ValueColorUpdate)
-
-InitDB()

@@ -1,3 +1,10 @@
+### v2.1.0 July 23 2023
+* code cleanup
+* reworked saving profile to use ElvUI SavedVariables instead of separate one for this addon
+* removed support for multiple "pattern sets" -- nice idea, too much work for an already busy boy
+* updated Ace Libs
+* changed some variable initialization
+
 ### v2.0.40 May 31 2023
 * new feature squelch info to chat
 * bump 10.1.5
