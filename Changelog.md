@@ -1,4 +1,5 @@
 ### v2.1.0 July 23 2023
+* added notes in config header
 * code cleanup
 * reworked saving profile to use ElvUI SavedVariables instead of separate one for this addon
 * removed support for multiple "pattern sets" -- nice idea, too much work for an already busy boy

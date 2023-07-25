@@ -14,6 +14,9 @@ local AllowDebug = true
 
 ]]--
 
+local ReleaseNotes = "Please note that config database for ItemCount is now merged with the main ElvUI profiles database. The feature allowing multiple sets of counted items has been removed. I regret having to do this, but it was necessary after the 10.1.5 update when the feature stopped working. This feature is not likely to be added back unless a large number of people ask for it, *AND* I am able to find the time to do the work. Thanks for your understanding."
+
+local BugLink = "https://github.com/solagegrey/ElvUI_ItemCount/issues"
 
 -- Addon Objects
 local E, L, V, P, G = unpack(ElvUI); --Import: Engine, Locales, PrivateDB, ProfileDB, GlobalDB
@@ -734,6 +737,27 @@ local function InjectOptions()
 					order	= 20,
 				},
 
+				noteshdr = {
+					type = "header",
+					name = "[   NOTES   ]",
+					order = 24,
+				},
+				notes = {
+					type = "description",
+					fontSize = "large",
+					name = ReleaseNotes,
+					order = 25,
+				},
+
+				buglink = {
+					type = 'input', 
+					width = 'full',
+					name = "Suggestions and Bug Reports",
+					get = function() return BugLink end,
+					set = function() return BugLink end,
+					order = 30,
+				},
+
 		-- GENERAL INFO
 
 				header2b = {
@@ -741,12 +765,7 @@ local function InjectOptions()
 					name	= " [    General Options    ] ",
 					order	= 50,
 				},
-
-				buglink = {
-					order = 51, type = 'input', width = 'full', name = 'Suggestions and Bug Reports:',
-					get = function() return 'https://github.com/solagegrey/ElvUI_ItemCount/issues' end,
-				},
-
+				
 				Debug = {
 					type	= 'toggle',
 					name	= L["Debug"],
