@@ -1,4 +1,4 @@
-## Interface: 100107
+## Interface: 100200
 
 ## Title: |cff1784d1ElvUI|r Item Count 2.1.01
 ## Author: Solage of Greymane
