@@ -1,3 +1,12 @@
+### v2.1.05 27 Aug 2024
+
+* temporary bug fix - GetAddOnMetadata is broken elsewhere
+
+### v2.1.04 23 Aug 2024
+
+* bump toc 11.0.2
+
+
 ### v2.1.03 09 May 2024
 
 * bump toc 10.2.7

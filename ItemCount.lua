@@ -1,4 +1,4 @@
-local Version = "2.1.03"
+local Version = "2.1.05"
 local AllowDebug = false
 
 --[[
@@ -6,10 +6,12 @@ local AllowDebug = false
 			ElvUI ItemCount
 				Solage of Greymane
 
-			v2.1.03
+			v2.1.05
 
 					To Do:
 
+1x ElvUI_ItemCount/ItemCount.lua:103: attempt to call global 'GetAddOnMetadata' (a nil value)
+[string "@ElvUI_ItemCount/ItemCount.lua"]:103: in main chunk
 					
 
 ]]--
@@ -100,7 +102,8 @@ local GetCVarBool = GetCVarBool
 
 local IsAddonLoaded = IsAddonLoaded
 
-IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
+IC.version = Version 
+--IC.version = GetAddOnMetadata("ElvUI_ItemCount", "Version")
 
 
 --------------- OBJECTS ------------------
